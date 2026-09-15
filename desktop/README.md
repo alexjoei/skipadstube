@@ -1,4 +1,4 @@
-# skipadstube Desktop 0.1.6
+# skipadstube Desktop 0.1.7
 
 La versión 0.1.5 añade acceso explícito a `https://www.youtube.com/*` para comprobar la URL de la pestaña. Sin ese permiso, Chrome puede ocultar la URL y la versión anterior mostraba incorrectamente «Activa la pestaña de YouTube».
 
@@ -25,7 +25,7 @@ No envía información fuera del navegador. El acceso de sitio se limita a `www.
 ## Actualizar y comprobar
 
 1. Si instalaste el ZIP antiguo, carga la carpeta `desktop` de este repositorio y desactiva la copia antigua.
-2. En `chrome://extensions` o `edge://extensions`, pulsa **Recargar** en skipadstube y comprueba la versión **0.1.6**.
+2. En `chrome://extensions` o `edge://extensions`, pulsa **Recargar** en skipadstube y comprueba la versión **0.1.7**.
 3. Recarga también la pestaña de YouTube para que use el nuevo código.
 4. Comprueba que **Omitir automáticamente** está activado y que la extensión tiene acceso a `www.youtube.com`.
 5. Prueba un anuncio con botón de omitir: debe pulsarlo cuando esté disponible. Los anuncios sin botón se silencian, pero no se pueden omitir con esta extensión.

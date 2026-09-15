@@ -1,7 +1,7 @@
 :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
 body { width: 292px; margin: 0; color: #f7f4ff; background: #14111b; }
 header { display: flex; gap: 12px; align-items: center; padding: 18px; background: linear-gradient(135deg,#31234b,#18131f); }
-.mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; font-weight: 800; background: #c8a7ff; color: #241638; }
+.mark { display: block; flex-shrink: 0; width: 42px; height: 42px; border-radius: 10px; object-fit: contain; }
 h1 { margin: 0; font-size: 20px; } p { margin: 2px 0 0; color: #bdb4ca; font-size: 12px; }
 main { padding: 8px 14px; }
 label { display: flex; align-items: center; justify-content: space-between; padding: 13px 4px; border-bottom: 1px solid #2b2632; font-size: 14px; }

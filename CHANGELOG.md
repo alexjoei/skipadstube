@@ -2,10 +2,31 @@
 
 ## Unreleased  
 
+### Android 0.2.2 / Desktop 0.1.7 — 2026-09-15
+
+- Use the supplied logo for the Android launcher, Chrome extension icons and extension popup.
+- Preserve the original artwork in `assets/logo.png`; generate platform icon sizes with `scripts/generate-icons.ps1`.
+- Add an adaptive Android icon with padding for launcher masks. Android version code is now 4.
+- Rebuild `dist/skipadstube-0.2.2.apk`; Android unit tests and desktop regression checks pass. APK signature and icon metadata verified; device testing remains pending.
+- APK SHA-256: `390a514af2f1a5e3d5dab60466c774d7a47efaba8373f5a383227e5c72e16934`.
+
+### Documentation
+
+- Add a short Spanish Android installation guide covering APK installation, Accessibility activation, restricted settings, background operation and the previous app identity.
+
+### Android 0.2.1 — 2026-09-15
+
+- Rebuild the current Android source as `dist/skipadstube-0.2.1.apk`, with display name skipadstube, application ID `com.skipadstube.app`, version 0.2.1 and version code 3.
+- Fix resource-ID matching to recognize Android's `:id/` separator for skip buttons and ad indicators.
+- Keep namespace, SDK levels and version metadata in Gradle; use the app name string resource for the application label.
+- Add the Gradle 8.9 wrapper for repeatable builds.
+- Validation: five Android unit tests pass; APK metadata and signature verified. This is a debug-signed test build; device testing is pending.
+- APK SHA-256: `35d8add39597c969c5bfa71703bbf0d5b966dc7abe3cb07043df94e8b58fe6ec`.
+
 ### Project naming
 
 - Standardize current source, Java package directories, Android namespace/application ID and preference keys on skipadstube.
-- Android requires a new build and installs as a separate app; historical APK contents remain unchanged.
+- Android 0.2.1 includes the renamed identifiers and installs as a separate app; historical APK contents remain unchanged.
 
 ### Desktop 0.1.6
 

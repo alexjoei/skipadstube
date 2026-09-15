@@ -1,13 +1,23 @@
 {
   "manifest_version": 3,
   "name": "skipadstube",
-  "version": "0.1.6",
+  "version": "0.1.7",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "description": "Silencia los anuncios de YouTube y los omite en cuanto aparece el botón.",
   "permissions": ["storage", "debugger"],
   "host_permissions": ["https://www.youtube.com/*"],
   "background": { "service_worker": "background.js" },
   "action": {
     "default_title": "skipadstube",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    },
     "default_popup": "popup.html"
   },
   "content_scripts": [{

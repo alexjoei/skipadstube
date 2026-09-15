@@ -40,7 +40,7 @@ final class DetectionRules {
 
     private static boolean hasIdSuffix(String id, Set<String> suffixes) {
         if (id == null) return false;
-        for (String suffix : suffixes) if (id.endsWith("/id/" + suffix) || id.endsWith(":" + suffix)) return true;
+        for (String suffix : suffixes) if (id.endsWith(":id/" + suffix) || id.endsWith(":" + suffix)) return true;
         return false;
     }
 
