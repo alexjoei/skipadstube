@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Desktop 0.1.2
+
+- Recognize exact short labels Skip, Omitir and Saltar within the player while an ad is detected.
+- Show content-script version, ad detection, skip availability, setting and click attempts in the popup.
+- Limit click retries to once per second; attempts do not imply successful skips.
+- Ten regression tests pass. Live Chrome ad skipping still requires verification.
+
 ### Desktop 0.1.1
 
 - Detect available skip controls without requiring the player ad-state class.

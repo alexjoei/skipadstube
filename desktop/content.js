@@ -13,6 +13,12 @@
   let adActive = false;
   let videoMutedBeforeAd = false;
   let audioContext;
+  let clickAttempts = 0;
+  let lastClickAt = 0;
+  let status = { ad: false, buttonFound: false, skipEnabled: true, clickAttempts: 0 };
+  chrome.runtime.onMessage.addListener((message, sender, respond) => {
+    if (message.type === 'skipadstube-status') respond({ ...status, version: '0.1.2' });
+  });
 
   chrome.storage.sync.get(DEFAULTS, values => { settings = values; tick(); });
   chrome.storage.onChanged.addListener(changes => {
@@ -45,7 +51,7 @@
     return true;
   }
 
-  function findSkipButton(root) {
+  function findSkipButton(root, adDetected) {
     if (!root) return null;
     for (const selector of SKIP_SELECTORS) {
       for (const button of root.querySelectorAll(selector)) {
@@ -54,8 +60,11 @@
     }
     // Fallback for experiments where YouTube changes class names but keeps an accessible label.
     for (const button of root.querySelectorAll('button, [role="button"]')) {
-      const label = `${button.textContent || ''} ${button.getAttribute('aria-label') || ''}`.toLowerCase();
-      if (visible(button) && /\b(?:skip ads?|omitir anuncios?|saltar anuncios?)\b/.test(label)) {
+      const labels = [button.textContent, button.getAttribute('aria-label')]
+        .map(value => (value || '').toLowerCase().replace(/\s+/g, ' ').trim());
+      const matches = labels.some(label => /\b(?:skip ads?|omitir anuncios?|saltar anuncios?)\b/.test(label) ||
+        (adDetected && /^(?:skip|omitir|saltar)$/.test(label)));
+      if (visible(button) && matches) {
         return button;
       }
     }
@@ -82,9 +91,18 @@
     const media = video();
     // An available ad-specific skip control is itself an ad signal. Do not
     // require a separate player class before attempting to click it.
-    const skipButton = findSkipButton(player());
-    if (isAdPlaying() || skipButton) beginAd(media); else endAd(media);
-    if (settings.skipAds && skipButton) skipButton.click();
+    const adDetected = isAdPlaying();
+    const skipButton = findSkipButton(player(), adDetected);
+    if (adDetected || skipButton) beginAd(media); else endAd(media);
+    // Bound retries when a click leaves the control visible. Attempts are not
+    // counted as successful skips: only the user/player can confirm that.
+    if (settings.skipAds && skipButton && Date.now() - lastClickAt >= 1000) {
+      lastClickAt = Date.now();
+      clickAttempts++;
+      skipButton.click();
+    }
+    status = { ad: Boolean(adDetected || skipButton), buttonFound: Boolean(skipButton),
+      skipEnabled: settings.skipAds, clickAttempts };
   }
 
   function chime(start) {

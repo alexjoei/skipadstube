@@ -15,6 +15,7 @@ function button({ hidden = false, disabled = false, label = '', parent = null } 
 }
 function run({ buttons = [], fallback = [], ad = false, skip = true } = {}) {
   let poll;
+  let onMessage;
   const media = { muted: false };
   const root = {
     classList: { contains: () => ad },
@@ -26,7 +27,7 @@ function run({ buttons = [], fallback = [], ad = false, skip = true } = {}) {
       documentElement: {},
       querySelector: selector => selector === '#movie_player' ? root : media
     },
-    chrome: { storage: {
+    chrome: { runtime: { onMessage: { addListener(callback) { onMessage = callback; } } }, storage: {
       sync: { get: (_, callback) => callback({ muteAds: true, skipAds: skip, softChimes: false }) },
       onChanged: { addListener() {} }
     } },
@@ -34,7 +35,11 @@ function run({ buttons = [], fallback = [], ad = false, skip = true } = {}) {
     MutationObserver: class { observe() {} },
     setInterval: callback => { poll = callback; }
   });
-  return { media, poll };
+  return { media, poll, status() {
+    let result;
+    onMessage({ type: 'skipadstube-status' }, {}, value => { result = value; });
+    return result;
+  } };
 }
 
 test('clicks an available skip control without an ad-state class', () => {
@@ -79,4 +84,31 @@ test('restores sound when the skip control disappears and no ad remains', () => 
   buttons.length = 0;
   poll();
   assert.equal(media.muted, false);
+});
+
+test('recognizes short skip labels only during a detected ad', () => {
+  for (const label of ['Skip', 'Omitir', 'Saltar']) {
+    const target = button({ label });
+    run({ fallback: [target] });
+    assert.equal(target.clicks, 0);
+    run({ fallback: [target], ad: true });
+    assert.equal(target.clicks, 1);
+  }
+});
+test('reports attempted clicks without claiming a successful skip and limits retries', () => {
+  const target = button();
+  const { poll, status } = run({ buttons: [target] });
+  poll();
+  poll();
+  assert.equal(target.clicks, 1);
+  assert.equal(status().buttonFound, true);
+  assert.equal(status().clickAttempts, 1);
+  assert.equal(status().ad, true);
+});
+test('status distinguishes missing buttons and disabled skipping', () => {
+  assert.equal(run({ ad: true }).status().buttonFound, false);
+  const state = run({ buttons: [button()], skip: false }).status();
+  assert.equal(state.buttonFound, true);
+  assert.equal(state.skipEnabled, false);
+  assert.equal(state.clickAttempts, 0);
 });
