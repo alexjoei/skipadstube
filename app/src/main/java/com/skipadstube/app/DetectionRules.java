@@ -12,37 +12,31 @@ final class DetectionRules {
         "skip_ad_button", "skip_button", "skip_ad_button_text", "ad_skip_button"
     ));
     private static final Set<String> AD_ID_SUFFIXES = new HashSet<>(Arrays.asList(
-        "ad_badge", "ad_badge_text", "ad_progress", "ad_countdown", "ad_duration",
-        "ad_info", "ad_info_view", "ad_remaining_time", "player_ad_controls"
+        "ad_badge", "ad_badge_text", "ad_progress", "ad_progress_text", "ad_countdown", "ad_duration",
+        "ad_remaining_time"
     ));
     private static final String[] SKIP_TEXT = {
         "saltar anuncio", "omitir anuncio", "omitir anuncios", "skip ad", "skip ads",
         "uberspringen", "annonce ignorer", "ignorer l annonce", "salta annuncio"
     };
-    private static final String[] AD_TEXT = {
-        "ad 1 of", "ad 2 of", "sponsored", "patrocinado",
-        "visit advertiser", "visitar anunciante", "more about this ad",
-        "acerca de este anuncio", "why this ad", "por que este anuncio"
-    };
-    private static final Set<String> EXACT_AD_TEXT = new HashSet<>(Arrays.asList(
-        "anuncio", "publicidad", "ad"
-    ));
-
     static boolean isSkip(String id, CharSequence text, CharSequence description) {
-        return hasIdSuffix(id, SKIP_ID_SUFFIXES) || containsAny(join(text, description), SKIP_TEXT);
+        return hasIdSuffix(id, SKIP_ID_SUFFIXES) || isSkipLabel(text) || isSkipLabel(description);
     }
 
     static boolean isAdSignal(String id, CharSequence text, CharSequence description) {
-        String normalized = join(text, description);
         return hasIdSuffix(id, AD_ID_SUFFIXES) || isSkip(id, text, description)
-            || isAdLabel(text) || isAdLabel(description) || containsAny(normalized, AD_TEXT);
+            || isAdLabel(text) || isAdLabel(description);
+    }
+
+    private static boolean isSkipLabel(CharSequence value) {
+        if (value == null) return false;
+        return Arrays.asList(SKIP_TEXT).contains(normalize(value.toString()));
     }
 
     private static boolean isAdLabel(CharSequence value) {
         if (value == null) return false;
         String label = normalize(value.toString());
-        return EXACT_AD_TEXT.contains(label)
-            || label.matches("(?:anuncio|publicidad|ad)\\s*[·•:–-]\\s*\\d+(?::\\d{2})?(?:\\s*(?:s|seg|seconds))?")
+        return label.matches("(?:anuncio|publicidad|ad)\\s*[·•:–-]\\s*\\d+(?::\\d{2})?(?:\\s*(?:s|seg|seconds))?")
             || label.matches("(?:anuncio|ad)\\s+\\d+\\s+(?:de|of)\\s+\\d+(?:\\s*[·•:–-].*)?");
     }
 
@@ -52,17 +46,9 @@ final class DetectionRules {
         return false;
     }
 
-    private static String join(CharSequence a, CharSequence b) {
-        return normalize((a == null ? "" : a.toString()) + " " + (b == null ? "" : b.toString()));
-    }
-
     private static String normalize(String input) {
         return Normalizer.normalize(input, Normalizer.Form.NFD)
             .replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").trim();
     }
 
-    private static boolean containsAny(String value, String[] needles) {
-        for (String needle : needles) if (value.contains(needle)) return true;
-        return false;
-    }
 }

@@ -15,16 +15,15 @@ public final class YouTubeAutomationService extends AccessibilityService {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private AdAudioController controller;
     private SharedPreferences settings;
-    private long lastEvidence = -1;
     private long lastClick;
     private final Runnable poll = new Runnable() {
         @Override public void run() {
-            inspect(false);
+            inspect();
             handler.postDelayed(this, 500);
         }
     };
     private final SharedPreferences.OnSharedPreferenceChangeListener settingsChanged =
-        (prefs, key) -> inspect(false);
+        (prefs, key) -> inspect();
 
     @Override public void onServiceConnected() {
         RuntimeStatus.connected = true;
@@ -36,7 +35,8 @@ public final class YouTubeAutomationService extends AccessibilityService {
                 try {
                     audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,
                         value ? AudioManager.ADJUST_MUTE : AudioManager.ADJUST_UNMUTE, 0);
-                    if (audio.isStreamMute(AudioManager.STREAM_MUSIC) != value) {
+                    if (audio.isStreamMute(AudioManager.STREAM_MUSIC) != value
+                            && !(value && audio.getStreamVolume(AudioManager.STREAM_MUSIC) == 0)) {
                         RuntimeStatus.audioError = "Android no ha aplicado el estado de silencio solicitado";
                     }
                 } catch (SecurityException error) {
@@ -45,7 +45,17 @@ public final class YouTubeAutomationService extends AccessibilityService {
             }
             public void volume(int value) {
                 try {
-                    audio.setStreamVolume(AudioManager.STREAM_MUSIC, value, 0);
+                    VolumeAdjustment.set(new VolumeAdjustment.Output() {
+                        public int current() { return audio.getStreamVolume(AudioManager.STREAM_MUSIC); }
+                        public int maximum() { return audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC); }
+                        public void absolute(int target) {
+                            audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
+                        }
+                        public void step(boolean up) {
+                            audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,
+                                up ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER, 0);
+                        }
+                    }, value);
                     RuntimeStatus.audioError = audio.getStreamVolume(AudioManager.STREAM_MUSIC) == value
                         ? "" : "Android no ha aplicado el volumen solicitado";
                 } catch (SecurityException error) {
@@ -61,16 +71,10 @@ public final class YouTubeAutomationService extends AccessibilityService {
     }
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (event.getPackageName() != null && YOUTUBE.contentEquals(event.getPackageName())) {
-            boolean evidence = DetectionRules.isAdSignal(null, null, event.getContentDescription());
-            for (CharSequence text : event.getText()) {
-                evidence |= DetectionRules.isAdSignal(null, text, null);
-            }
-            inspect(evidence);
-        }
+        // The fixed poll avoids rescanning the whole tree for every animation event.
     }
 
-    private void inspect(boolean eventEvidence) {
+    private void inspect() {
         if (controller == null) return;
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null) { RuntimeStatus.scan = "No se puede leer la ventana activa"; finish(); return; }
@@ -80,11 +84,18 @@ public final class YouTubeAutomationService extends AccessibilityService {
                 RuntimeStatus.scan = "Abre YouTube para comprobar los anuncios";
                 finish(); return;
             }
-            scan(root, result);
+            java.util.List<AccessibilityNodeInfo> players = root.findAccessibilityNodeInfosByViewId(
+                YOUTUBE + ":id/watch_player");
+            try {
+                for (AccessibilityNodeInfo player : players) {
+                    if (player.refresh()) scan(player, result);
+                }
+            } finally {
+                for (AccessibilityNodeInfo player : players) player.recycle();
+            }
             long now = SystemClock.elapsedRealtime();
-            if (result.adDetected || eventEvidence) lastEvidence = now;
-            // Bridge brief tree updates and transitions between consecutive ads.
-            boolean ad = lastEvidence >= 0 && now - lastEvidence < 1400;
+            // Never extend muting into content after the visible ad signal disappears.
+            boolean ad = result.adDetected;
             controller.update(ad, settings.getBoolean("mute_ads", true),
                 settings.getBoolean("soft_chimes", true));
             RuntimeStatus.scan = ad ? "Anuncio detectado" : "YouTube visible; sin señal de anuncio";
@@ -108,6 +119,7 @@ public final class YouTubeAutomationService extends AccessibilityService {
     }
 
     private void scan(AccessibilityNodeInfo node, ScanResult result) {
+        if (++result.visited > 512 || (result.adDetected && result.skipNode != null)) return;
         if (node.isVisibleToUser()) {
             String id = node.getViewIdResourceName();
             if (DetectionRules.isAdSignal(id, node.getText(), node.getContentDescription())) result.adDetected = true;
@@ -139,7 +151,6 @@ public final class YouTubeAutomationService extends AccessibilityService {
     }
 
     private void finish() {
-        lastEvidence = -1;
         if (controller != null) controller.finish(false);
     }
     @Override public void onInterrupt() { finish(); }
@@ -150,5 +161,5 @@ public final class YouTubeAutomationService extends AccessibilityService {
         finish();
         super.onDestroy();
     }
-    private static final class ScanResult { boolean adDetected; AccessibilityNodeInfo skipNode; }
+    private static final class ScanResult { boolean adDetected; AccessibilityNodeInfo skipNode; int visited; }
 }

@@ -1,25 +1,25 @@
-# skipadstube MVP 0.2.5 (Android)
+# skipadstube MVP 0.2.7 (Android)
 
 Aplicación local que observa exclusivamente la interfaz de la app oficial de YouTube,
 silencia el audio al detectar un anuncio y pulsa el botón de omitir cuando aparece.
 
 ## Estado
 
-- MVP 0.2.5, con el nombre e identificador skipadstube.
+- MVP 0.2.7, con el nombre e identificador skipadstube.
 - Sin permiso de Internet, analítica ni recopilación de datos.
 - Funciona mediante el servicio de Accesibilidad, sin ventanas ni botones flotantes. El acceso directo de Android es opcional; puede desactivarse manteniendo el servicio activo.
-- Android 8 o posterior; pendiente de probar en un dispositivo con el nuevo identificador.
+- Android 8 o posterior. Silencio y restauración comprobados mediante el estado de audio de un Realme RMX3851 con Android 15; otros modelos pendientes.
 - Reglas desacopladas en `DetectionRules.java` para poder corregir cambios de interfaz.
-- Avisos sonoros suaves de inicio y fin configurables.
-- La detección usa tanto el árbol visible como el texto de los eventos de Accesibilidad.
+- Avisos sonoros de inicio y fin configurables; su reproducción audible sigue pendiente de corregir en el Realme probado.
+- La detección revisa los controles visibles del reproductor cada 500 ms y excluye las recomendaciones patrocinadas.
 
 ## Compilar e instalar
 
 **Para instalarlo en el móvil:** [guía rápida de instalación y activación](INSTALACION.md).
 
-APK actualizado: `dist/skipadstube-0.2.5.apk` (compilación debug firmada para pruebas).
+APK actualizado: `dist/skipadstube-0.2.7.apk` (compilación debug firmada para pruebas).
 Incluye el código Android actual y el nuevo identificador `com.skipadstube.app`.
-Se instala como una app distinta de la anterior: abre skipadstube y activa su servicio
+Actualiza sobre versiones 0.2.1 o posteriores. Si vienes de 0.2.0, se instala como otra app: activa su servicio
 de Accesibilidad; los ajustes anteriores no se migran.
 
 1. Abrir esta carpeta con la versión reciente de Android Studio.
@@ -54,11 +54,11 @@ concreto. No toma decisiones abiertas ni ejecuta acciones fuera de YouTube.
 
 Canonical repository: https://github.com/alexjoei/skipadstube
 
-- Android source remains at the repository root (app/), version 0.2.5 (version code 7).
+- Android source remains at the repository root (app/), version 0.2.7 (version code 9).
 - Desktop Chrome/Edge extension is in desktop/, version 0.1.7; see its README for installation.
 - The Android source was compared with the supplied 0.2.0 source archive and matched before renaming.
 - Android now uses application ID com.skipadstube.app and preference key skipadstube. Android treats this as a new app: the previous installation and its settings are not upgraded or migrated.
 - The supplied skipadstube-0.2.0.apk is a historical binary; renaming source does not change that APK.
 - Open the root project in Android Studio with JDK 17 and Android SDK 35. The Gradle wrapper pins Gradle 8.9 for Android Gradle Plugin 8.7.3. Run `./gradlew :app:testDebugUnitTest :app:assembleDebug` (`.\gradlew.bat` on Windows) once the toolchain is configured. The APK is generated at `app/build/outputs/apk/debug/app-debug.apk`.
-- Android 0.2.5: 16 unit tests pass; APK label, package, version and signature verified. Device testing remains pending.
+- Android 0.2.7: regression coverage includes rejected volume writes and restoration retries. On Realme RMX3851 / Android 15, two ads reached media volume 0 and content recovered its saved volume; audible chimes remain unresolved.
 - Record improvements as GitHub issues and implement them in branches with pull requests. Never commit signing keys or local SDK paths.

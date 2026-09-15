@@ -31,6 +31,9 @@ final class AdAudioController {
         if (savedVolume < 0) return;
         if (!savedMuted) output.volume(savedVolume);
         if (output.muted() != savedMuted) output.mute(savedMuted);
+        // Some devices reject audio changes temporarily. Keep the original state
+        // until a subsequent poll confirms restoration, including between ads.
+        if (output.muted() != savedMuted || (!savedMuted && output.volume() != savedVolume)) return;
         savedVolume = -1;
         boolean wasMuted = notified;
         notified = false;

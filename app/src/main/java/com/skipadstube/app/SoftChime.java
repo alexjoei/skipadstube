@@ -25,9 +25,16 @@ final class SoftChime {
                         .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
                     .setBufferSizeInBytes(pcm.length * 2)
                     .setTransferMode(AudioTrack.MODE_STATIC).build();
-                if (track.getState() != AudioTrack.STATE_INITIALIZED
-                        || track.write(pcm, 0, pcm.length) != pcm.length) {
-                    throw new IllegalStateException("No se pudo preparar el sonido");
+                // MODE_STATIC starts in STATE_NO_STATIC_DATA until write() loads the PCM.
+                if (track.getState() == AudioTrack.STATE_UNINITIALIZED) {
+                    throw new IllegalStateException("No se pudo crear la salida de audio");
+                }
+                int written = track.write(pcm, 0, pcm.length);
+                if (written != pcm.length) {
+                    throw new IllegalStateException("Carga de audio incompleta: " + written + "/" + pcm.length);
+                }
+                if (track.getState() != AudioTrack.STATE_INITIALIZED) {
+                    throw new IllegalStateException("Salida no preparada tras cargar el audio: " + track.getState());
                 }
                 track.setVolume(0.45f);
                 track.play();
@@ -36,7 +43,8 @@ final class SoftChime {
                 try { Thread.sleep(360); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
                 track.stop();
                 } catch (IllegalArgumentException | IllegalStateException | SecurityException error) {
-                    RuntimeStatus.sound = "Error de sonido: " + error.getClass().getSimpleName();
+                    RuntimeStatus.sound = "Error de sonido: " + error.getClass().getSimpleName()
+                        + " — " + error.getMessage();
                 } finally {
                     if (track != null) track.release();
                 }

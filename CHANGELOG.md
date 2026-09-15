@@ -2,6 +2,22 @@
 
 ## Unreleased  
 
+### Android 0.2.7 — 2026-09-15
+
+- Stop treating generic advertising labels, informational controls and text mentioning skip actions as sufficient evidence of a playing ad. Require exact skip labels, playback-related IDs or structured ad counters/timers.
+- Scan the refreshed YouTube player every 500 ms; ignore sponsored recommendation cards outside the player. Recognize the real device's `ad_progress_text` marker and remove the 1.4-second mute hold after ad signals disappear.
+- Realme's audio framework rejected background absolute-volume and mute calls. Fall back to public volume-step adjustments; retain the original volume until restoration succeeds instead of discarding it after a rejected call.
+- On a Realme RMX3851 running Android 15, observed two consecutive ads at media volume 0 and subsequent content restored to its saved volume (2/16). Ordinary video playback with sponsored recommendations remained unmuted. This verifies system audio state, not an external recording; other devices and ad layouts remain unverified.
+- Add regression tests for rejected audio writes, retrying restoration and ordinary content detection. Soft chimes remain inaudible according to user feedback and are not claimed fixed.
+- All 25 unit tests pass. Generated and installed `dist/skipadstube-0.2.7.apk` (version code 9); package metadata and APK signature verified. Automatic skipping re-enabled after the full-ad test.
+- APK SHA-256: `5c19c9f3bdedd02aebb7a89f683fb2c86830202f2fe93aaa1b7992f0ed2a5497`.
+
+### Android 0.2.6 — 2026-09-15
+
+- Fix the chime initialization regression introduced in 0.2.4: static AudioTrack starts in STATE_NO_STATIC_DATA, so load PCM before requiring STATE_INITIALIZED. The old pre-write check threw IllegalStateException and prevented playback.
+- Include the error message in sound diagnostics to distinguish creation, data loading and playback failures.
+- APK build and signature verified; 16 existing unit tests pass. These tests do not exercise Android audio hardware; audible playback still requires phone verification. Ad-muting behavior remains unchanged from 0.2.5.
+
 ### Android 0.2.5 — 2026-09-15
 
 - Request explicit media-stream mute in addition to setting its volume to zero. Restore the preceding volume and mute state after the ad; preserve audio that was already muted.

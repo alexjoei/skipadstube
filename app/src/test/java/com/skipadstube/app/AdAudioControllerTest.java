@@ -7,6 +7,22 @@ import java.util.List;
 import static org.junit.Assert.*;
 
 public class AdAudioControllerTest {
+    @Test public void ordinaryVideoNeverChangesAudio() {
+        Output out = new Output();
+        AdAudioController controller = new AdAudioController(out);
+        for (int i = 0; i < 10; i++) controller.update(false, true, true);
+        assertEquals(7, out.value);
+        assertFalse(out.muted);
+        assertTrue(out.events.isEmpty());
+    }
+    @Test public void firstContentCheckRestoresAudioAfterAd() {
+        Output out = new Output();
+        AdAudioController controller = new AdAudioController(out);
+        controller.update(true, true, false);
+        controller.update(false, true, false);
+        assertEquals(7, out.value);
+        assertFalse(out.muted);
+    }
     private static class Output implements AdAudioController.Output {
         int value = 7;
         boolean fixed;
@@ -86,5 +102,21 @@ public class AdAudioControllerTest {
         controller.finish(false);
         assertTrue(out.muted);
         assertFalse(out.events.contains("mute:false"));
+    }
+    @Test public void retriesRejectedRestorationWithoutLosingOriginalVolume() {
+        Output out = new Output();
+        AdAudioController controller = new AdAudioController(out);
+        controller.update(true, true, true);
+        out.fixed = true;
+        controller.update(false, true, true);
+        assertTrue(out.muted);
+        assertFalse(out.events.contains("end"));
+        controller.update(true, true, true);
+        out.fixed = false;
+        controller.update(false, true, true);
+        assertEquals(7, out.value);
+        assertFalse(out.muted);
+        assertEquals(1, java.util.Collections.frequency(out.events, "start"));
+        assertEquals(1, java.util.Collections.frequency(out.events, "end"));
     }
 }

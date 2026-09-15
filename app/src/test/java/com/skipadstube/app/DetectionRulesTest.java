@@ -4,8 +4,28 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class DetectionRulesTest {
-    @Test public void duplicateAdTextAndDescriptionStillDetectAd() {
-        assertTrue(DetectionRules.isAdSignal(null, "Anuncio", "Anuncio"));
+    @Test public void realYouTubeAdProgressIsDetectedButSponsoredRecommendationIsNot() {
+        assertTrue(DetectionRules.isAdSignal("com.google.android.youtube:id/ad_progress_text",
+            "Sponsored · 1 of 2 · 1:42", "Sponsored · 1 of 2 · 1:42 My Ad Center"));
+        assertFalse(DetectionRules.isAdSignal(null, "Sponsored", "Sponsored"));
+        assertFalse(DetectionRules.isAdSignal(null, null,
+            "Sponsored - #culpanuestra - 20 minutes - Prime Video - play video"));
+    }
+    @Test public void genericAdvertisingLabelsDoNotProvePlayback() {
+        for (String label : new String[] {"Anuncio", "Publicidad", "Ad", "Sponsored", "Patrocinado",
+                "Visitar anunciante", "Acerca de este anuncio"}) {
+            assertFalse(label, DetectionRules.isAdSignal(null, label, label));
+        }
+    }
+    @Test public void informationalAdControlsDoNotProvePlayback() {
+        for (String id : new String[] {"ad_info", "ad_info_view", "player_ad_controls"}) {
+            assertFalse(DetectionRules.isAdSignal("com.google.android.youtube:id/" + id, null, null));
+        }
+    }
+    @Test public void videoTitlesDiscussingSkipDoNotMuteOrClick() {
+        String title = "Cómo omitir anuncios en YouTube";
+        assertFalse(DetectionRules.isAdSignal(null, title, null));
+        assertFalse(DetectionRules.isSkip(null, title, null));
     }
     @Test public void spanishAdCountersAndTimers() {
         assertTrue(DetectionRules.isAdSignal(null, "Anuncio 1 de 2", null));

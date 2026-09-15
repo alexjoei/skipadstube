@@ -26,7 +26,7 @@ public final class MainActivity extends Activity {
             AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
             int stream = RuntimeStatus.connected ? AudioManager.STREAM_ACCESSIBILITY : AudioManager.STREAM_MUSIC;
             setVolumeControlStream(stream);
-            diagnostics.setText("Versión 0.2.5 · Servicio " + (RuntimeStatus.connected ? "conectado" : "desconectado")
+            diagnostics.setText("Versión 0.2.7 · Servicio " + (RuntimeStatus.connected ? "conectado" : "desconectado")
                 + "\n" + RuntimeStatus.scan + "\n" + RuntimeStatus.lastAd
                 + "\nVolumen de avisos: " + audio.getStreamVolume(stream) + "/" + audio.getStreamMaxVolume(stream)
                 + "\n" + RuntimeStatus.sound
