@@ -35,6 +35,7 @@ public final class MainActivity extends Activity {
 
         root.addView(toggle("Silenciar durante anuncios", "mute_ads", true));
         root.addView(toggle("Omitir anuncios automáticamente", "skip_ads", true));
+        root.addView(toggle("Sonido suave al empezar y terminar", "soft_chimes", true));
 
         Button accessibility = new Button(this);
         accessibility.setText("Abrir ajustes de Accesibilidad");

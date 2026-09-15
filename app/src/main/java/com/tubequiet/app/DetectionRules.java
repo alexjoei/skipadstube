@@ -12,7 +12,8 @@ final class DetectionRules {
         "skip_ad_button", "skip_button", "skip_ad_button_text", "ad_skip_button"
     ));
     private static final Set<String> AD_ID_SUFFIXES = new HashSet<>(Arrays.asList(
-        "ad_badge", "ad_progress", "ad_countdown", "ad_duration", "ad_info"
+        "ad_badge", "ad_badge_text", "ad_progress", "ad_countdown", "ad_duration",
+        "ad_info", "ad_info_view", "ad_remaining_time", "player_ad_controls"
     ));
     private static final String[] SKIP_TEXT = {
         "saltar anuncio", "omitir anuncio", "omitir anuncios", "skip ad", "skip ads",
@@ -20,7 +21,8 @@ final class DetectionRules {
     };
     private static final String[] AD_TEXT = {
         "ad 1 of", "ad 2 of", "sponsored", "patrocinado",
-        "visit advertiser", "visitar anunciante", "more about this ad"
+        "visit advertiser", "visitar anunciante", "more about this ad",
+        "acerca de este anuncio", "why this ad", "por que este anuncio"
     };
     private static final Set<String> EXACT_AD_TEXT = new HashSet<>(Arrays.asList(
         "anuncio", "publicidad", "ad"

@@ -8,12 +8,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import java.util.List;
 
 public final class YouTubeAutomationService extends AccessibilityService {
     private static final String YOUTUBE = "com.google.android.youtube";
     private final Handler handler = new Handler(Looper.getMainLooper());
     private AudioManager audio;
     private boolean mutedByUs;
+    private boolean adActive;
     private int volumeBeforeAd = -1;
     private final Runnable endCheck = new Runnable() {
         @Override public void run() { restoreIfAdEnded(); }
@@ -25,16 +27,17 @@ public final class YouTubeAutomationService extends AccessibilityService {
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getPackageName() == null || !YOUTUBE.contentEquals(event.getPackageName())) {
-            restoreVolume(); return;
+            finishAd(false); return;
         }
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null) return;
         ScanResult result = new ScanResult();
         scan(root, result);
+        if (isAdEvent(event)) result.adDetected = true;
         root.recycle();
 
         if (result.adDetected) {
-            if (prefs().getBoolean("mute_ads", true)) mute();
+            beginAd();
             if (prefs().getBoolean("skip_ads", true) && result.skipNode != null) click(result.skipNode);
             handler.removeCallbacks(endCheck);
             handler.postDelayed(endCheck, 1400);
@@ -72,6 +75,21 @@ public final class YouTubeAutomationService extends AccessibilityService {
         mutedByUs = true;
     }
 
+    private void beginAd() {
+        if (!adActive) {
+            adActive = true;
+            if (prefs().getBoolean("soft_chimes", true)) SoftChime.play(true);
+        }
+        if (prefs().getBoolean("mute_ads", true)) mute();
+    }
+
+    private boolean isAdEvent(AccessibilityEvent event) {
+        StringBuilder value = new StringBuilder();
+        List<CharSequence> parts = event.getText();
+        if (parts != null) for (CharSequence part : parts) if (part != null) value.append(part).append(' ');
+        return DetectionRules.isAdSignal(null, value, event.getContentDescription());
+    }
+
     private void restoreIfAdEnded() {
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null) { restoreVolume(); return; }
@@ -82,7 +100,7 @@ public final class YouTubeAutomationService extends AccessibilityService {
             if (prefs().getBoolean("skip_ads", true) && result.skipNode != null) click(result.skipNode);
             handler.postDelayed(endCheck, 1200);
         } else {
-            restoreVolume();
+            finishAd(true);
         }
         if (result.skipNode != null) result.skipNode.recycle();
     }
@@ -93,9 +111,16 @@ public final class YouTubeAutomationService extends AccessibilityService {
         mutedByUs = false; volumeBeforeAd = -1;
     }
 
+    private void finishAd(boolean notify) {
+        boolean wasActive = adActive;
+        restoreVolume();
+        adActive = false;
+        if (notify && wasActive && prefs().getBoolean("soft_chimes", true)) SoftChime.play(false);
+    }
+
     private SharedPreferences prefs() { return getSharedPreferences("tubequiet", MODE_PRIVATE); }
-    @Override public void onInterrupt() { restoreVolume(); }
-    @Override public void onDestroy() { handler.removeCallbacksAndMessages(null); restoreVolume(); super.onDestroy(); }
+    @Override public void onInterrupt() { finishAd(false); }
+    @Override public void onDestroy() { handler.removeCallbacksAndMessages(null); finishAd(false); super.onDestroy(); }
 
     private static final class ScanResult { boolean adDetected; AccessibilityNodeInfo skipNode; }
 }

@@ -1,4 +1,4 @@
-# TubeQuiet MVP (Android)
+# TubeQuiet MVP 0.2 (Android)
 
 Aplicación local que observa exclusivamente la interfaz de la app oficial de YouTube,
 silencia el audio al detectar un anuncio y pulsa el botón de omitir cuando aparece.
@@ -9,6 +9,8 @@ silencia el audio al detectar un anuncio y pulsa el botón de omitir cuando apar
 - Sin permiso de Internet, analítica ni recopilación de datos.
 - Android 8 o posterior; APK compilado y firma verificada, pendiente de prueba real en el dispositivo.
 - Reglas desacopladas en `DetectionRules.java` para poder corregir cambios de interfaz.
+- Avisos sonoros suaves de inicio y fin configurables.
+- La detección usa tanto el árbol visible como el texto de los eventos de Accesibilidad.
 
 ## Compilar e instalar
 
