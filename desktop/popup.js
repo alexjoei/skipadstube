@@ -16,7 +16,8 @@ async function updateStatus() {
     if (!status) throw new Error('No response');
     output.textContent = `v${status.version} · ${status.skipEnabled ? 'Omitir activado' : 'Omitir desactivado'} · ` +
       `${status.ad ? 'Anuncio detectado' : 'Sin anuncio'} · ` +
-      `${status.buttonFound ? 'Botón encontrado' : 'Botón no encontrado'} · Intentos de clic: ${status.clickAttempts}`;
+      `${status.buttonFound ? 'Botón encontrado' : 'Botón no encontrado'} · Intentos de clic: ${status.clickAttempts}` +
+      (status.browserResult ? ` · ${status.browserResult}` : '');
   } catch (_) {
     output.textContent = 'Sin conexión. Abre YouTube y recarga la pestaña. Comprueba el acceso de la extensión al sitio.';
   }

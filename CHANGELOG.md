@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Desktop 0.1.6
+
+- User confirmed browser-level skipping works in Chrome and requested it as the default.
+- Remove the experimental mode switch and ineffective synthetic input path. The skipAds setting alone controls skipping; old local mode preferences are ignored.
+- Retain active YouTube tab checks, fresh button coordinates and debugger cleanup.
+
+### Desktop 0.1.5 (experimental)
+
+- Declare YouTube-only host access so the browser-input guard can read the tab URL.
+- Distinguish missing site access, inactive tabs and navigation outside YouTube.
+- The previous tests supplied tab URLs unconditionally and missed Chrome withholding this property.
+
+### Desktop 0.1.4 (experimental)
+
+- Add an off-by-default browser-input mode for skip buttons that ignore scripted events.
+- Requires the powerful Chrome debugger permission at extension load time; Chrome does not support requesting it as an optional permission.
+- Restrict requests to top-level YouTube content scripts and active YouTube tabs, recheck button coordinates, throttle requests and detach after each attempt.
+- Report browser-input errors in the popup. Live YouTube success remains unverified.
+
 ### Desktop 0.1.3
 
 - Send pointer/mouse press and release events before clicking the visible skip-button child at its center.
