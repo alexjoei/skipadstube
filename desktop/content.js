@@ -34,24 +34,32 @@
   }
 
   function visible(element) {
-    if (!element || element.disabled) return false;
-    const style = getComputedStyle(element);
-    return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+    if (!element || element.disabled || element.getAttribute('aria-disabled') === 'true' ||
+        element.getClientRects().length === 0) return false;
+    for (let node = element; node; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      if (node.hidden || node.getAttribute('aria-hidden') === 'true' ||
+          style.display === 'none' || style.visibility === 'hidden' ||
+          style.visibility === 'collapse' || style.opacity === '0') return false;
+    }
+    return true;
   }
 
-  function skipNow() {
-    if (!settings.skipAds) return;
+  function findSkipButton(root) {
+    if (!root) return null;
     for (const selector of SKIP_SELECTORS) {
-      const button = document.querySelector(selector);
-      if (visible(button)) { button.click(); return; }
-    }
-    // Fallback for experiments where YouTube changes class names but keeps an accessible label.
-    for (const button of document.querySelectorAll('button')) {
-      const label = `${button.textContent || ''} ${button.getAttribute('aria-label') || ''}`.toLowerCase();
-      if (visible(button) && /skip ad|skip ads|omitir anuncio|omitir anuncios|saltar anuncio/.test(label)) {
-        button.click(); return;
+      for (const button of root.querySelectorAll(selector)) {
+        if (visible(button)) return button;
       }
     }
+    // Fallback for experiments where YouTube changes class names but keeps an accessible label.
+    for (const button of root.querySelectorAll('button, [role="button"]')) {
+      const label = `${button.textContent || ''} ${button.getAttribute('aria-label') || ''}`.toLowerCase();
+      if (visible(button) && /\b(?:skip ads?|omitir anuncios?|saltar anuncios?)\b/.test(label)) {
+        return button;
+      }
+    }
+    return null;
   }
 
   function beginAd(media) {
@@ -61,7 +69,6 @@
       if (settings.softChimes) chime(true);
     }
     if (media && settings.muteAds) media.muted = true;
-    skipNow();
   }
 
   function endAd(media) {
@@ -73,7 +80,11 @@
 
   function tick() {
     const media = video();
-    if (isAdPlaying()) beginAd(media); else endAd(media);
+    // An available ad-specific skip control is itself an ad signal. Do not
+    // require a separate player class before attempting to click it.
+    const skipButton = findSkipButton(player());
+    if (isAdPlaying() || skipButton) beginAd(media); else endAd(media);
+    if (settings.skipAds && skipButton) skipButton.click();
   }
 
   function chime(start) {
@@ -97,4 +108,5 @@
   const observer = new MutationObserver(tick);
   observer.observe(document.documentElement, { attributes: true, childList: true, subtree: true });
   setInterval(tick, 300);
+  tick();
 })();

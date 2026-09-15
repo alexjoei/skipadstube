@@ -1,4 +1,4 @@
-# skipadstube Desktop 0.1
+# skipadstube Desktop 0.1.1
 
 Extensión local para Chrome y Edge. Detecta el estado de publicidad del reproductor,
 silencia solo el elemento de vídeo, conserva el estado de silencio previo y pulsa el
@@ -13,3 +13,13 @@ botón de omitir en cuanto está visible.
 5. Abrir YouTube. El icono de la extensión permite cambiar los tres ajustes.
 
 No envía información ni solicita acceso fuera de `youtube.com`.
+
+## Actualizar y comprobar
+
+1. Si instalaste el ZIP antiguo, carga la carpeta `desktop` de este repositorio y desactiva la copia antigua.
+2. En `chrome://extensions` o `edge://extensions`, pulsa **Recargar** en skipadstube y comprueba la versión **0.1.1**.
+3. Recarga también la pestaña de YouTube para que use el nuevo código.
+4. Comprueba que **Omitir automáticamente** está activado y que la extensión tiene acceso a `www.youtube.com`.
+5. Prueba un anuncio con botón de omitir: debe pulsarlo cuando esté disponible. Los anuncios sin botón se silencian, pero no se pueden omitir con esta extensión.
+
+Pruebas de regresión: `node --test desktop/tests/content.test.cjs` desde la raíz del repositorio.

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Desktop 0.1.1
+
+- Detect available skip controls without requiring the player ad-state class.
+- Check all matching controls, including when a hidden duplicate comes first.
+- Restrict fallback button matching to the player and reject disabled or hidden controls.
+- Document reloading both the extension and the YouTube tab after updates.
+
 - Rename Android and desktop display branding to skipadstube.
 - Import desktop extension 0.1.0 alongside Android 0.2.0, preserving Android Git history.
 - Preserve Android package identity and stored settings.
