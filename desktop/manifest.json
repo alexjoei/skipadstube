@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "skipadstube",
+  "version": "0.1.0",
+  "description": "Silencia los anuncios de YouTube y los omite en cuanto aparece el botón.",
+  "permissions": ["storage"],
+  "action": {
+    "default_title": "skipadstube",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [{
+    "matches": ["https://www.youtube.com/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }]
+}

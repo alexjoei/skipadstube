@@ -25,7 +25,7 @@ public final class MainActivity extends Activity {
         root.setBackgroundColor(Color.WHITE);
 
         TextView title = new TextView(this);
-        title.setText("TubeQuiet"); title.setTextSize(30); title.setTextColor(Color.BLACK);
+        title.setText("skipadstube"); title.setTextSize(30); title.setTextColor(Color.BLACK);
         root.addView(title);
 
         TextView info = new TextView(this);

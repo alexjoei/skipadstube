@@ -28,7 +28,7 @@ final class SoftChime {
                 track.stop();
                 track.release();
             }
-        }, "TubeQuiet-chime").start();
+        }, "skipadstube-chime").start();
     }
 
     private static short[] create(boolean start) {

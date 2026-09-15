@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">TubeQuiet</string>
+    <string name="app_name">skipadstube</string>
     <string name="accessibility_description">Silencia anuncios de YouTube y pulsa el botón para omitirlos cuando aparece.</string>
 </resources>
