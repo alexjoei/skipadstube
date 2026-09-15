@@ -7,13 +7,16 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../content.js'), 'utf8');
 function button({ hidden = false, disabled = false, label = '', parent = null } = {}) {
   return {
-    hidden, disabled, textContent: label, parentElement: parent, clicks: 0,
+    hidden, disabled, textContent: label, parentElement: parent, clicks: 0, events: [], isConnected: true,
+    getBoundingClientRect() { return { left: 10, top: 10, width: 100, height: 40 }; },
+    contains(target) { return target === this; },
+    dispatchEvent(event) { this.events.push(event.type); if (event.type === 'click') this.clicks++; },
     getAttribute() { return null; },
     getClientRects() { return [{}]; },
     click() { this.clicks++; }
   };
 }
-function run({ buttons = [], fallback = [], ad = false, skip = true } = {}) {
+function run({ buttons = [], fallback = [], ad = false, skip = true, overlay = null } = {}) {
   let poll;
   let onMessage;
   const media = { muted: false };
@@ -25,8 +28,12 @@ function run({ buttons = [], fallback = [], ad = false, skip = true } = {}) {
   vm.runInNewContext(source, {
     document: {
       documentElement: {},
+      elementFromPoint: () => overlay || [...buttons, ...fallback].find(b => !b.hidden && !b.disabled),
       querySelector: selector => selector === '#movie_player' ? root : media
     },
+    window: {},
+    MouseEvent: class { constructor(type, options) { this.type = type; Object.assign(this, options); } },
+    PointerEvent: class { constructor(type, options) { this.type = type; Object.assign(this, options); } },
     chrome: { runtime: { onMessage: { addListener(callback) { onMessage = callback; } } }, storage: {
       sync: { get: (_, callback) => callback({ muteAds: true, skipAds: skip, softChimes: false }) },
       onChanged: { addListener() {} }
@@ -111,4 +118,24 @@ test('status distinguishes missing buttons and disabled skipping', () => {
   assert.equal(state.buttonFound, true);
   assert.equal(state.skipEnabled, false);
   assert.equal(state.clickAttempts, 0);
+});
+
+test('dispatches press and release before clicking the skip button', () => {
+  const target = button();
+  run({ buttons: [target] });
+  assert.deepEqual(target.events, ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']);
+});
+test('does not click through another element covering the skip button', () => {
+  const target = button();
+  const state = run({ buttons: [target], overlay: button() }).status();
+  assert.equal(target.events.length, 0);
+  assert.equal(state.clickAttempts, 0);
+});
+test('targets the visible text or icon inside the button', () => {
+  const target = button();
+  const child = button();
+  target.contains = node => node === target || node === child;
+  run({ buttons: [target], overlay: child });
+  assert.equal(child.clicks, 1);
+  assert.equal(target.clicks, 0);
 });

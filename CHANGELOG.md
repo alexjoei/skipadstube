@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Desktop 0.1.3
+
+- Send pointer/mouse press and release events before clicking the visible skip-button child at its center.
+- Avoid clicks through overlays and stop when the control disappears during the sequence.
+- No new permissions. These remain synthetic events; this does not establish that YouTube accepts them.
+- Regression coverage includes event order, overlay blocking and child targets. Live YouTube verification is pending.
+
 ### Desktop 0.1.2
 
 - Recognize exact short labels Skip, Omitir and Saltar within the player while an ad is detected.

@@ -17,7 +17,7 @@
   let lastClickAt = 0;
   let status = { ad: false, buttonFound: false, skipEnabled: true, clickAttempts: 0 };
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
-    if (message.type === 'skipadstube-status') respond({ ...status, version: '0.1.2' });
+    if (message.type === 'skipadstube-status') respond({ ...status, version: '0.1.3' });
   });
 
   chrome.storage.sync.get(DEFAULTS, values => { settings = values; tick(); });
@@ -80,6 +80,29 @@
     if (media && settings.muteAds) media.muted = true;
   }
 
+  function clickSkipButton(button) {
+    const rect = button.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const target = document.elementFromPoint(x, y);
+    // Click the visible child (text/icon), as a physical click would. Never
+    // dispatch to an overlay or a detached control at the same coordinates.
+    if (!target || !button.contains(target)) return false;
+    const options = { bubbles: true, cancelable: true, composed: true,
+      view: window, clientX: x, clientY: y, button: 0 };
+    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
+      if (!button.isConnected || !visible(button)) return true;
+      const EventType = type.startsWith('pointer') ? PointerEvent : MouseEvent;
+      target.dispatchEvent(new EventType(type, { ...options,
+        buttons: type.endsWith('down') ? 1 : 0,
+        pointerId: 1, pointerType: 'mouse', isPrimary: true }));
+    }
+    if (button.isConnected && visible(button) && button.contains(document.elementFromPoint(x, y))) {
+      target.dispatchEvent(new MouseEvent('click', { ...options, buttons: 0, detail: 1 }));
+    }
+    return true;
+  }
+
   function endAd(media) {
     if (!adActive) return;
     if (media && settings.muteAds) media.muted = videoMutedBeforeAd;
@@ -98,8 +121,7 @@
     // counted as successful skips: only the user/player can confirm that.
     if (settings.skipAds && skipButton && Date.now() - lastClickAt >= 1000) {
       lastClickAt = Date.now();
-      clickAttempts++;
-      skipButton.click();
+      if (clickSkipButton(skipButton)) clickAttempts++;
     }
     status = { ad: Boolean(adDetected || skipButton), buttonFound: Boolean(skipButton),
       skipEnabled: settings.skipAds, clickAttempts };
