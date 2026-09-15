@@ -1,4 +1,4 @@
-package com.tubequiet.app;
+package com.skipadstube.app;
 
 import org.junit.Test;
 import static org.junit.Assert.*;

@@ -1,4 +1,4 @@
-package com.tubequiet.app;
+package com.skipadstube.app;
 
 import android.accessibilityservice.AccessibilityService;
 import android.content.Context;
@@ -118,7 +118,7 @@ public final class YouTubeAutomationService extends AccessibilityService {
         if (notify && wasActive && prefs().getBoolean("soft_chimes", true)) SoftChime.play(false);
     }
 
-    private SharedPreferences prefs() { return getSharedPreferences("tubequiet", MODE_PRIVATE); }
+    private SharedPreferences prefs() { return getSharedPreferences("skipadstube", MODE_PRIVATE); }
     @Override public void onInterrupt() { finishAd(false); }
     @Override public void onDestroy() { handler.removeCallbacksAndMessages(null); finishAd(false); super.onDestroy(); }
 

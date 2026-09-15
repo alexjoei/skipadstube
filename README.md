@@ -7,7 +7,7 @@ silencia el audio al detectar un anuncio y pulsa el botón de omitir cuando apar
 
 - MVP 0.2, listo para abrir y compilar en Android Studio.
 - Sin permiso de Internet, analítica ni recopilación de datos.
-- Android 8 o posterior; APK compilado y firma verificada, pendiente de prueba real en el dispositivo.
+- Android 8 o posterior; pendiente de compilar y probar el APK con el nuevo identificador.
 - Reglas desacopladas en `DetectionRules.java` para poder corregir cambios de interfaz.
 - Avisos sonoros suaves de inicio y fin configurables.
 - La detección usa tanto el árbol visible como el texto de los eventos de Accesibilidad.
@@ -47,9 +47,9 @@ concreto. No toma decisiones abiertas ni ejecuta acciones fuera de YouTube.
 Canonical repository: https://github.com/alexjoei/skipadstube
 
 - Android source remains at the repository root (app/), version 0.2.0.
-- Desktop Chrome/Edge extension is in desktop/, version 0.1.0; see its README for installation.
+- Desktop Chrome/Edge extension is in desktop/, version 0.1.6; see its README for installation.
 - The Android source was compared with the supplied 0.2.0 source archive and matched before renaming.
-- Android keeps application ID com.tubequiet.app and its existing preference keys for installation and settings continuity. Updating the installed APK also requires the original signing key.
-- The supplied TubeQuiet-0.2.0.apk is a historical binary; renaming source does not change that APK.
+- Android now uses application ID com.skipadstube.app and preference key skipadstube. Android treats this as a new app: the previous installation and its settings are not upgraded or migrated.
+- The supplied skipadstube-0.2.0.apk is a historical binary; renaming source does not change that APK.
 - Open the root project in Android Studio with JDK 17 and Android SDK 35. This source snapshot has no Gradle wrapper; use Gradle 8.9 for Android Gradle Plugin 8.7.3. Run gradle :app:testDebugUnitTest :app:assembleDebug once the toolchain is configured.
 - Record improvements as GitHub issues and implement them in branches with pull requests. Never commit signing keys or local SDK paths.

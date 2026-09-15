@@ -1,11 +1,11 @@
 plugins { id("com.android.application") }
 
 android {
-    namespace = "com.tubequiet.app"
+    namespace = "com.skipadstube.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.tubequiet.app"
+        applicationId = "com.skipadstube.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 2

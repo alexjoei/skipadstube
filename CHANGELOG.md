@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Project naming
+
+- Standardize current source, Java package directories, Android namespace/application ID and preference keys on skipadstube.
+- Android requires a new build and installs as a separate app; historical APK contents remain unchanged.
+
 ### Desktop 0.1.6
 
 - User confirmed browser-level skipping works in Chrome and requested it as the default.
@@ -48,9 +53,9 @@
 
 ## Supplied baseline
 
-Android source: TubeQuiet-Android-0.2.0-source.zip
-Desktop source: TubeQuiet-Desktop-0.1.0.zip
-Historical APK: TubeQuiet-0.2.0.apk
+Android source: skipadstube-Android-0.2.0-source.zip
+Desktop source: skipadstube-Desktop-0.1.0.zip
+Historical APK: skipadstube-0.2.0.apk
 APK SHA-256: 7d2e04719b115a88cf9e28529b9f087b087c197192dcf31a8bb429629d250ba4
 
 The historical APK has not been rebuilt or device-tested in this workspace.

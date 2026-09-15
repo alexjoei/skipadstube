@@ -1,4 +1,4 @@
-package com.tubequiet.app;
+package com.skipadstube.app;
 
 import java.text.Normalizer;
 import java.util.Arrays;

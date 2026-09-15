@@ -1,4 +1,4 @@
-package com.tubequiet.app;
+package com.skipadstube.app;
 
 import android.media.AudioAttributes;
 import android.media.AudioFormat;

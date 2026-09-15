@@ -1,4 +1,4 @@
-package com.tubequiet.app;
+package com.skipadstube.app;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -14,7 +14,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 public final class MainActivity extends Activity {
-    private static final String PREFS = "tubequiet";
+    private static final String PREFS = "skipadstube";
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
