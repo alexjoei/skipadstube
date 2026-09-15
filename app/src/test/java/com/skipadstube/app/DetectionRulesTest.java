@@ -4,6 +4,18 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class DetectionRulesTest {
+    @Test public void duplicateAdTextAndDescriptionStillDetectAd() {
+        assertTrue(DetectionRules.isAdSignal(null, "Anuncio", "Anuncio"));
+    }
+    @Test public void spanishAdCountersAndTimers() {
+        assertTrue(DetectionRules.isAdSignal(null, "Anuncio 1 de 2", null));
+        assertTrue(DetectionRules.isAdSignal(null, "Anuncio · 0:15", null));
+        assertTrue(DetectionRules.isAdSignal(null, "Ad • 15 s", null));
+    }
+    @Test public void ordinaryTitlesContainingAdAreNotAdLabels() {
+        assertFalse(DetectionRules.isAdSignal(null, "Mi anuncio favorito", null));
+        assertFalse(DetectionRules.isAdSignal(null, "Publicidad en la historia", null));
+    }
     @Test public void recognizesSpanishSkipTextWithAccent() {
         assertTrue(DetectionRules.isSkip(null, "Omitir anuncio", null));
     }

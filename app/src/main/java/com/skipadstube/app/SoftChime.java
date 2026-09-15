@@ -10,8 +10,10 @@ final class SoftChime {
     static void play(final boolean start) {
         new Thread(new Runnable() {
             @Override public void run() {
+                AudioTrack track = null;
+                try {
                 short[] pcm = create(start);
-                AudioTrack track = new AudioTrack.Builder()
+                track = new AudioTrack.Builder()
                     .setAudioAttributes(new AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
@@ -26,7 +28,11 @@ final class SoftChime {
                 track.play();
                 try { Thread.sleep(360); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
                 track.stop();
-                track.release();
+                } catch (IllegalArgumentException | IllegalStateException | SecurityException ignored) {
+                    // An unavailable sound output must never stop ad muting or restoration.
+                } finally {
+                    if (track != null) track.release();
+                }
             }
         }, "skipadstube-chime").start();
     }

@@ -35,7 +35,15 @@ final class DetectionRules {
     static boolean isAdSignal(String id, CharSequence text, CharSequence description) {
         String normalized = join(text, description);
         return hasIdSuffix(id, AD_ID_SUFFIXES) || isSkip(id, text, description)
-            || EXACT_AD_TEXT.contains(normalized) || containsAny(normalized, AD_TEXT);
+            || isAdLabel(text) || isAdLabel(description) || containsAny(normalized, AD_TEXT);
+    }
+
+    private static boolean isAdLabel(CharSequence value) {
+        if (value == null) return false;
+        String label = normalize(value.toString());
+        return EXACT_AD_TEXT.contains(label)
+            || label.matches("(?:anuncio|publicidad|ad)\\s*[·•:–-]\\s*\\d+(?::\\d{2})?(?:\\s*(?:s|seg|seconds))?")
+            || label.matches("(?:anuncio|ad)\\s+\\d+\\s+(?:de|of)\\s+\\d+(?:\\s*[·•:–-].*)?");
     }
 
     private static boolean hasIdSuffix(String id, Set<String> suffixes) {
@@ -50,7 +58,7 @@ final class DetectionRules {
 
     private static String normalize(String input) {
         return Normalizer.normalize(input, Normalizer.Form.NFD)
-            .replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT).trim();
+            .replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").trim();
     }
 
     private static boolean containsAny(String value, String[] needles) {

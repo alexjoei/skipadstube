@@ -12,6 +12,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.ScrollView;
 
 public final class MainActivity extends Activity {
     private static final String PREFS = "skipadstube";
@@ -37,6 +38,17 @@ public final class MainActivity extends Activity {
         root.addView(toggle("Omitir anuncios automáticamente", "skip_ads", true));
         root.addView(toggle("Sonido suave al empezar y terminar", "soft_chimes", true));
 
+        TextView audioHelp = new TextView(this);
+        audioHelp.setText("Los avisos suenan al silenciar el anuncio y al restaurar el volumen. Respetan el volumen de sonidos del sistema y el modo silencio. El silencio de anuncios afecta al volumen multimedia del teléfono.");
+        root.addView(audioHelp);
+        Button preview = new Button(this);
+        preview.setText("Probar sonidos de inicio y fin");
+        preview.setOnClickListener(view -> {
+            SoftChime.play(true);
+            view.postDelayed(() -> SoftChime.play(false), 650);
+        });
+        root.addView(preview);
+
         Button accessibility = new Button(this);
         accessibility.setText("Abrir ajustes de Accesibilidad");
         accessibility.setOnClickListener(new View.OnClickListener() {
@@ -50,7 +62,9 @@ public final class MainActivity extends Activity {
         warning.setText("Importante: Android mostrará una advertencia porque el servicio puede ver elementos de pantalla. El servicio está restringido en su configuración al paquete oficial de YouTube.");
         warning.setPadding(0, pad, 0, 0);
         root.addView(warning);
-        setContentView(root);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(root);
+        setContentView(scroll);
     }
 
     private Switch toggle(String label, String key, boolean fallback) {

@@ -2,6 +2,15 @@
 
 ## Unreleased  
 
+### Android 0.2.3 — 2026-09-15
+
+- Check YouTube every 500 ms instead of repeatedly delaying end checks when accessibility events arrive. Reapply muting while an ad remains detected and restore volume when leaving YouTube.
+- Recognize duplicated ad labels in text/description and Spanish ad counters/timers; ignore hidden nodes and disabled skip buttons.
+- Apply audio preferences immediately. Play the start chime only after verifying media volume is zero, and the end chime after restoration. Disabling muting restores volume without an end-of-ad chime.
+- Add a sound preview button and a scrollable settings screen; preserve the existing mute, skip and soft-chime preferences. Sound-output failures no longer crash the chime thread.
+- Build `dist/skipadstube-0.2.3.apk` (version code 5). All 14 unit tests pass; APK metadata and signature verified. No device was connected; real-ad validation remains pending.
+- APK SHA-256: `19017429709ec5fa57de5bc1313823d793c3451fb532e9fe93101dab783fe785`.
+
 ### Android 0.2.2 / Desktop 0.1.7 — 2026-09-15
 
 - Use the supplied logo for the Android launcher, Chrome extension icons and extension popup.

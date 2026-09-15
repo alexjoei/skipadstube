@@ -6,121 +6,120 @@ import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
-import java.util.List;
 
 public final class YouTubeAutomationService extends AccessibilityService {
     private static final String YOUTUBE = "com.google.android.youtube";
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private AudioManager audio;
-    private boolean mutedByUs;
-    private boolean adActive;
-    private int volumeBeforeAd = -1;
-    private final Runnable endCheck = new Runnable() {
-        @Override public void run() { restoreIfAdEnded(); }
+    private AdAudioController controller;
+    private SharedPreferences settings;
+    private long lastEvidence = -1;
+    private long lastClick;
+    private final Runnable poll = new Runnable() {
+        @Override public void run() {
+            inspect(false);
+            handler.postDelayed(this, 500);
+        }
     };
+    private final SharedPreferences.OnSharedPreferenceChangeListener settingsChanged =
+        (prefs, key) -> inspect(false);
 
     @Override public void onServiceConnected() {
-        audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        final AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        controller = new AdAudioController(new AdAudioController.Output() {
+            public int volume() { return audio.getStreamVolume(AudioManager.STREAM_MUSIC); }
+            public void volume(int value) {
+                try { audio.setStreamVolume(AudioManager.STREAM_MUSIC, value, 0); }
+                catch (SecurityException ignored) { /* Device policy may block volume changes. */ }
+            }
+            public void chime(boolean start) { SoftChime.play(start); }
+        });
+        settings = getSharedPreferences("skipadstube", MODE_PRIVATE);
+        settings.registerOnSharedPreferenceChangeListener(settingsChanged);
+        handler.removeCallbacks(poll);
+        handler.post(poll);
     }
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (event.getPackageName() == null || !YOUTUBE.contentEquals(event.getPackageName())) {
-            finishAd(false); return;
+        if (event.getPackageName() != null && YOUTUBE.contentEquals(event.getPackageName())) {
+            boolean evidence = DetectionRules.isAdSignal(null, null, event.getContentDescription());
+            for (CharSequence text : event.getText()) {
+                evidence |= DetectionRules.isAdSignal(null, text, null);
+            }
+            inspect(evidence);
         }
-        AccessibilityNodeInfo root = getRootInActiveWindow();
-        if (root == null) return;
-        ScanResult result = new ScanResult();
-        scan(root, result);
-        if (isAdEvent(event)) result.adDetected = true;
-        root.recycle();
+    }
 
-        if (result.adDetected) {
-            beginAd();
-            if (prefs().getBoolean("skip_ads", true) && result.skipNode != null) click(result.skipNode);
-            handler.removeCallbacks(endCheck);
-            handler.postDelayed(endCheck, 1400);
-        } else {
-            handler.removeCallbacks(endCheck);
-            handler.postDelayed(endCheck, 700);
+    private void inspect(boolean eventEvidence) {
+        if (controller == null) return;
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) { finish(); return; }
+        ScanResult result = new ScanResult();
+        try {
+            if (root.getPackageName() == null || !YOUTUBE.contentEquals(root.getPackageName())) {
+                finish(); return;
+            }
+            scan(root, result);
+            long now = SystemClock.elapsedRealtime();
+            if (result.adDetected || eventEvidence) lastEvidence = now;
+            // Bridge brief tree updates and transitions between consecutive ads.
+            boolean ad = lastEvidence >= 0 && now - lastEvidence < 1400;
+            controller.update(ad, settings.getBoolean("mute_ads", true),
+                settings.getBoolean("soft_chimes", true));
+            if (result.skipNode != null && settings.getBoolean("skip_ads", true)
+                    && now - lastClick >= 1000) {
+                click(result.skipNode);
+                lastClick = now;
+            }
+        } finally {
+            root.recycle();
+            if (result.skipNode != null) result.skipNode.recycle();
         }
-        if (result.skipNode != null) result.skipNode.recycle();
     }
 
     private void scan(AccessibilityNodeInfo node, ScanResult result) {
-        String id = node.getViewIdResourceName();
-        if (DetectionRules.isAdSignal(id, node.getText(), node.getContentDescription())) result.adDetected = true;
-        if (result.skipNode == null && node.isVisibleToUser()
-            && DetectionRules.isSkip(id, node.getText(), node.getContentDescription())) {
-            result.skipNode = AccessibilityNodeInfo.obtain(node);
+        if (node.isVisibleToUser()) {
+            String id = node.getViewIdResourceName();
+            if (DetectionRules.isAdSignal(id, node.getText(), node.getContentDescription())) result.adDetected = true;
+            if (result.skipNode == null && node.isEnabled()
+                    && DetectionRules.isSkip(id, node.getText(), node.getContentDescription())) {
+                result.skipNode = AccessibilityNodeInfo.obtain(node);
+            }
         }
         for (int i = 0; i < node.getChildCount(); i++) {
             AccessibilityNodeInfo child = node.getChild(i);
-            if (child != null) { scan(child, result); child.recycle(); }
+            if (child != null) {
+                try { scan(child, result); } finally { child.recycle(); }
+            }
         }
     }
 
     private void click(AccessibilityNodeInfo node) {
-        AccessibilityNodeInfo target = node;
-        while (target != null && !target.isClickable()) target = target.getParent();
-        if (target != null) target.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-        if (target != null && target != node) target.recycle();
-    }
-
-    private void mute() {
-        if (mutedByUs || audio == null) return;
-        volumeBeforeAd = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
-        audio.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0);
-        mutedByUs = true;
-    }
-
-    private void beginAd() {
-        if (!adActive) {
-            adActive = true;
-            if (prefs().getBoolean("soft_chimes", true)) SoftChime.play(true);
+        AccessibilityNodeInfo target = AccessibilityNodeInfo.obtain(node);
+        while (target != null) {
+            if (target.isClickable() && target.isEnabled()) {
+                target.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                target.recycle();
+                return;
+            }
+            AccessibilityNodeInfo parent = target.getParent();
+            target.recycle();
+            target = parent;
         }
-        if (prefs().getBoolean("mute_ads", true)) mute();
     }
 
-    private boolean isAdEvent(AccessibilityEvent event) {
-        StringBuilder value = new StringBuilder();
-        List<CharSequence> parts = event.getText();
-        if (parts != null) for (CharSequence part : parts) if (part != null) value.append(part).append(' ');
-        return DetectionRules.isAdSignal(null, value, event.getContentDescription());
+    private void finish() {
+        lastEvidence = -1;
+        if (controller != null) controller.finish(false);
     }
-
-    private void restoreIfAdEnded() {
-        AccessibilityNodeInfo root = getRootInActiveWindow();
-        if (root == null) { restoreVolume(); return; }
-        ScanResult result = new ScanResult();
-        scan(root, result);
-        root.recycle();
-        if (result.adDetected) {
-            if (prefs().getBoolean("skip_ads", true) && result.skipNode != null) click(result.skipNode);
-            handler.postDelayed(endCheck, 1200);
-        } else {
-            finishAd(true);
-        }
-        if (result.skipNode != null) result.skipNode.recycle();
+    @Override public void onInterrupt() { finish(); }
+    @Override public void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+        if (settings != null) settings.unregisterOnSharedPreferenceChangeListener(settingsChanged);
+        finish();
+        super.onDestroy();
     }
-
-    private void restoreVolume() {
-        if (!mutedByUs || audio == null) return;
-        audio.setStreamVolume(AudioManager.STREAM_MUSIC, Math.max(0, volumeBeforeAd), 0);
-        mutedByUs = false; volumeBeforeAd = -1;
-    }
-
-    private void finishAd(boolean notify) {
-        boolean wasActive = adActive;
-        restoreVolume();
-        adActive = false;
-        if (notify && wasActive && prefs().getBoolean("soft_chimes", true)) SoftChime.play(false);
-    }
-
-    private SharedPreferences prefs() { return getSharedPreferences("skipadstube", MODE_PRIVATE); }
-    @Override public void onInterrupt() { finishAd(false); }
-    @Override public void onDestroy() { handler.removeCallbacksAndMessages(null); finishAd(false); super.onDestroy(); }
-
     private static final class ScanResult { boolean adDetected; AccessibilityNodeInfo skipNode; }
 }
