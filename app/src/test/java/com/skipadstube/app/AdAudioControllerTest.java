@@ -10,9 +10,13 @@ public class AdAudioControllerTest {
     private static class Output implements AdAudioController.Output {
         int value = 7;
         boolean fixed;
+        boolean muted;
+        boolean rejectVolume;
         List<String> events = new ArrayList<>();
         public int volume() { return value; }
-        public void volume(int next) { if (!fixed) value = next; events.add("volume:" + next); }
+        public void volume(int next) { if (!fixed && !rejectVolume) value = next; events.add("volume:" + next); }
+        public boolean muted() { return muted; }
+        public void mute(boolean next) { if (!fixed) muted = next; events.add("mute:" + next); }
         public void chime(boolean start) { events.add(start ? "start" : "end"); }
     }
     @Test public void muteBeforeChimeAndRestoreBeforeEndChime() {
@@ -22,7 +26,7 @@ public class AdAudioControllerTest {
         controller.update(true, true, true);
         controller.update(false, true, true);
         controller.update(false, true, true);
-        assertEquals(Arrays.asList("volume:0", "start", "volume:7", "end"), out.events);
+        assertEquals(Arrays.asList("volume:0", "mute:true", "start", "volume:7", "mute:false", "end"), out.events);
     }
     @Test public void disabledMutingDoesNotPlayAdChimes() {
         Output out = new Output();
@@ -37,7 +41,7 @@ public class AdAudioControllerTest {
         controller.update(true, true, false);
         controller.update(true, false, false);
         assertEquals(7, out.value);
-        assertEquals(Arrays.asList("volume:0", "volume:7"), out.events);
+        assertEquals(Arrays.asList("volume:0", "mute:true", "volume:7", "mute:false"), out.events);
     }
     @Test public void reassertMuteWithoutLosingOriginalVolume() {
         Output out = new Output();
@@ -48,7 +52,7 @@ public class AdAudioControllerTest {
         assertEquals(0, out.value);
         controller.finish(false);
         assertEquals(7, out.value);
-        assertEquals(Arrays.asList("volume:0", "volume:0", "volume:7"), out.events);
+        assertEquals(Arrays.asList("volume:0", "mute:true", "volume:0", "volume:7", "mute:false"), out.events);
     }
     @Test public void fixedVolumeDoesNotAnnounceSuccessfulMute() {
         Output out = new Output(); out.fixed = true;
@@ -64,5 +68,23 @@ public class AdAudioControllerTest {
         controller.update(true, true, false);
         controller.finish(false);
         assertEquals(0, out.value);
+    }
+    @Test public void explicitMuteWorksWhenVolumeWriteIsIgnored() {
+        Output out = new Output(); out.rejectVolume = true;
+        AdAudioController controller = new AdAudioController(out);
+        controller.update(true, true, true);
+        assertTrue(out.muted);
+        assertTrue(out.events.contains("start"));
+        controller.finish(false);
+        assertFalse(out.muted);
+        assertEquals(7, out.value);
+    }
+    @Test public void neverUnmutesPreviouslyMutedAudio() {
+        Output out = new Output(); out.value = 0; out.muted = true;
+        AdAudioController controller = new AdAudioController(out);
+        controller.update(true, true, false);
+        controller.finish(false);
+        assertTrue(out.muted);
+        assertFalse(out.events.contains("mute:false"));
     }
 }

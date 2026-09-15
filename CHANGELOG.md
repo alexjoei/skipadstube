@@ -2,6 +2,23 @@
 
 ## Unreleased  
 
+### Android 0.2.5 — 2026-09-15
+
+- Request explicit media-stream mute in addition to setting its volume to zero. Restore the preceding volume and mute state after the ad; preserve audio that was already muted.
+- Show Android's reported media mute state alongside the last detected ad. Retain independent accessibility-channel chimes and sound preview changes from 0.2.4.
+- All 16 unit tests pass, including ignored volume writes with successful explicit mute and preservation of pre-existing mute. APK build, metadata and signature verified; effectiveness on the user's phone remains pending feedback.
+
+### Installation guidance
+
+- Clarify that no floating button or overlay is required; document disabling Android's accessibility shortcut while keeping the service enabled.
+
+### Android 0.2.4 — 2026-09-15
+
+- Move chimes from system sonification to the independent accessibility audio channel when connected; use media audio for standalone previews. Increase the quiet PCM gain and report playback preparation errors.
+- Request accessibility volume control and additional accessible views. Add local service, detection, last-ad volume and sound diagnostics without recording screen content.
+- Show the relevant sound volume and route the activity volume keys to it. Re-enable the accessibility service after updating to load the new flags.
+- Build and signature verified; 14 unit tests pass. The reported real-device muting failure is still under investigation; this build exposes evidence needed to distinguish missing detection from blocked or differently routed audio.
+
 ### Android 0.2.3 — 2026-09-15
 
 - Check YouTube every 500 ms instead of repeatedly delaying end checks when accessibility events arrive. Reapply muting while an ad remains detected and restore volume when leaving YouTube.

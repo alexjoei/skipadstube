@@ -13,9 +13,30 @@ import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.ScrollView;
+import android.media.AudioManager;
+import android.os.Handler;
+import android.os.Looper;
 
 public final class MainActivity extends Activity {
     private static final String PREFS = "skipadstube";
+    private TextView diagnostics;
+    private final Handler refreshHandler = new Handler(Looper.getMainLooper());
+    private final Runnable refresh = new Runnable() {
+        @Override public void run() {
+            AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
+            int stream = RuntimeStatus.connected ? AudioManager.STREAM_ACCESSIBILITY : AudioManager.STREAM_MUSIC;
+            setVolumeControlStream(stream);
+            diagnostics.setText("Versión 0.2.5 · Servicio " + (RuntimeStatus.connected ? "conectado" : "desconectado")
+                + "\n" + RuntimeStatus.scan + "\n" + RuntimeStatus.lastAd
+                + "\nVolumen de avisos: " + audio.getStreamVolume(stream) + "/" + audio.getStreamMaxVolume(stream)
+                + "\n" + RuntimeStatus.sound
+                + (audio.isVolumeFixed() ? "\nEl dispositivo indica volumen fijo" : "")
+                + (RuntimeStatus.audioError.isEmpty() ? "" : "\n" + RuntimeStatus.audioError));
+            refreshHandler.postDelayed(this, 500);
+        }
+    };
+    @Override protected void onResume() { super.onResume(); refreshHandler.post(refresh); }
+    @Override protected void onPause() { refreshHandler.removeCallbacks(refresh); super.onPause(); }
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -39,7 +60,7 @@ public final class MainActivity extends Activity {
         root.addView(toggle("Sonido suave al empezar y terminar", "soft_chimes", true));
 
         TextView audioHelp = new TextView(this);
-        audioHelp.setText("Los avisos suenan al silenciar el anuncio y al restaurar el volumen. Respetan el volumen de sonidos del sistema y el modo silencio. El silencio de anuncios afecta al volumen multimedia del teléfono.");
+        audioHelp.setText("Los avisos usan el volumen de Accesibilidad cuando el servicio está conectado. Ajusta ese volumen con las teclas del móvil mientras estás en esta pantalla. Sin el servicio, la prueba usa multimedia. El silencio de anuncios afecta al volumen multimedia del teléfono.");
         root.addView(audioHelp);
         Button preview = new Button(this);
         preview.setText("Probar sonidos de inicio y fin");
@@ -48,6 +69,10 @@ public final class MainActivity extends Activity {
             view.postDelayed(() -> SoftChime.play(false), 650);
         });
         root.addView(preview);
+        diagnostics = new TextView(this);
+        diagnostics.setTextColor(Color.DKGRAY);
+        diagnostics.setPadding(0, pad, 0, pad);
+        root.addView(diagnostics);
 
         Button accessibility = new Button(this);
         accessibility.setText("Abrir ajustes de Accesibilidad");

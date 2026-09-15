@@ -4,24 +4,33 @@ final class AdAudioController {
     interface Output {
         int volume();
         void volume(int value);
+        boolean muted();
+        void mute(boolean value);
         void chime(boolean start);
     }
     private final Output output;
     private int savedVolume = -1;
     private boolean notified;
+    private boolean savedMuted;
     AdAudioController(Output output) { this.output = output; }
     void update(boolean ad, boolean mute, boolean sounds) {
         if (!ad || !mute) { finish(!ad && sounds); return; }
-        if (savedVolume < 0) savedVolume = output.volume();
+        boolean first = savedVolume < 0;
+        if (first) {
+            savedVolume = output.volume();
+            savedMuted = output.muted();
+        }
         if (output.volume() != 0) output.volume(0);
-        if (!notified && output.volume() == 0) {
+        if (first || !output.muted()) output.mute(true);
+        if (!notified && (output.volume() == 0 || output.muted())) {
             notified = true;
             if (sounds) output.chime(true);
         }
     }
     void finish(boolean sounds) {
         if (savedVolume < 0) return;
-        output.volume(savedVolume);
+        if (!savedMuted) output.volume(savedVolume);
+        if (output.muted() != savedMuted) output.mute(savedMuted);
         savedVolume = -1;
         boolean wasMuted = notified;
         notified = false;

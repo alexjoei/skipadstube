@@ -27,12 +27,30 @@ public final class YouTubeAutomationService extends AccessibilityService {
         (prefs, key) -> inspect(false);
 
     @Override public void onServiceConnected() {
+        RuntimeStatus.connected = true;
         final AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         controller = new AdAudioController(new AdAudioController.Output() {
             public int volume() { return audio.getStreamVolume(AudioManager.STREAM_MUSIC); }
+            public boolean muted() { return audio.isStreamMute(AudioManager.STREAM_MUSIC); }
+            public void mute(boolean value) {
+                try {
+                    audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,
+                        value ? AudioManager.ADJUST_MUTE : AudioManager.ADJUST_UNMUTE, 0);
+                    if (audio.isStreamMute(AudioManager.STREAM_MUSIC) != value) {
+                        RuntimeStatus.audioError = "Android no ha aplicado el estado de silencio solicitado";
+                    }
+                } catch (SecurityException error) {
+                    RuntimeStatus.audioError = "Android ha bloqueado el silencio multimedia";
+                }
+            }
             public void volume(int value) {
-                try { audio.setStreamVolume(AudioManager.STREAM_MUSIC, value, 0); }
-                catch (SecurityException ignored) { /* Device policy may block volume changes. */ }
+                try {
+                    audio.setStreamVolume(AudioManager.STREAM_MUSIC, value, 0);
+                    RuntimeStatus.audioError = audio.getStreamVolume(AudioManager.STREAM_MUSIC) == value
+                        ? "" : "Android no ha aplicado el volumen solicitado";
+                } catch (SecurityException error) {
+                    RuntimeStatus.audioError = "Android ha bloqueado el cambio de volumen";
+                }
             }
             public void chime(boolean start) { SoftChime.play(start); }
         });
@@ -55,10 +73,11 @@ public final class YouTubeAutomationService extends AccessibilityService {
     private void inspect(boolean eventEvidence) {
         if (controller == null) return;
         AccessibilityNodeInfo root = getRootInActiveWindow();
-        if (root == null) { finish(); return; }
+        if (root == null) { RuntimeStatus.scan = "No se puede leer la ventana activa"; finish(); return; }
         ScanResult result = new ScanResult();
         try {
             if (root.getPackageName() == null || !YOUTUBE.contentEquals(root.getPackageName())) {
+                RuntimeStatus.scan = "Abre YouTube para comprobar los anuncios";
                 finish(); return;
             }
             scan(root, result);
@@ -68,6 +87,15 @@ public final class YouTubeAutomationService extends AccessibilityService {
             boolean ad = lastEvidence >= 0 && now - lastEvidence < 1400;
             controller.update(ad, settings.getBoolean("mute_ads", true),
                 settings.getBoolean("soft_chimes", true));
+            RuntimeStatus.scan = ad ? "Anuncio detectado" : "YouTube visible; sin señal de anuncio";
+            if (ad) {
+                AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                RuntimeStatus.lastAd = "Último anuncio: " + new java.text.SimpleDateFormat("HH:mm:ss",
+                    java.util.Locale.getDefault()).format(new java.util.Date())
+                    + "; volumen multimedia " + audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    + "; canal silenciado: " + (audio.isStreamMute(AudioManager.STREAM_MUSIC) ? "sí" : "no")
+                    + (settings.getBoolean("mute_ads", true) ? "; silencio activado" : "; silencio desactivado");
+            }
             if (result.skipNode != null && settings.getBoolean("skip_ads", true)
                     && now - lastClick >= 1000) {
                 click(result.skipNode);
@@ -116,6 +144,7 @@ public final class YouTubeAutomationService extends AccessibilityService {
     }
     @Override public void onInterrupt() { finish(); }
     @Override public void onDestroy() {
+        RuntimeStatus.connected = false;
         handler.removeCallbacksAndMessages(null);
         if (settings != null) settings.unregisterOnSharedPreferenceChangeListener(settingsChanged);
         finish();
