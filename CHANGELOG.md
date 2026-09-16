@@ -2,6 +2,12 @@
 
 ## Unreleased  
 
+### Android 0.2.8 / Desktop 0.1.8 — 2026-09-16
+
+- Replace the app and browser-extension icon with the new "AD skip" artwork (assets/logo.png), regenerated at all Android launcher densities (mdpi–xxxhdpi, standard and foreground) and desktop extension sizes (16/32/48/128px) via `scripts/generate-icons.ps1`. No behavior changes.
+- All 25 unit tests pass (unaffected by this change). Generated `dist/skipadstube-0.2.8.apk` (version code 10); package metadata and APK contents verified to include the updated launcher icons.
+- APK SHA-256: `fa848df9746d35bd189a02551cc4dc651c6f77425c3ec1afaa0e89e2b112d4a2`.
+
 ### Android 0.2.7 — 2026-09-15
 
 - Stop treating generic advertising labels, informational controls and text mentioning skip actions as sufficient evidence of a playing ad. Require exact skip labels, playback-related IDs or structured ad counters/timers.
