@@ -1,4 +1,4 @@
-# skipadstube Desktop 0.1.10
+# skipadstube Desktop 1.0.0
 
 La versión 0.1.5 añade acceso explícito a `https://www.youtube.com/*` para comprobar la URL de la pestaña. Sin ese permiso, Chrome puede ocultar la URL y la versión anterior mostraba incorrectamente «Activa la pestaña de YouTube».
 
@@ -38,6 +38,11 @@ y no usa ningún permiso nuevo. Columnas (las mismas que usa la app Android):
 - `pod_position`: posición del anuncio dentro de una tanda de anuncios seguidos (1, 2, 3…;
   vuelve a 1 si pasan más de 3 segundos desde que terminó el anterior) — para saber si salen
   anuncios sueltos o varios encadenados.
+- `content_ms_before_ad`: tiempo de vídeo **realmente reproducido** (el `<video>` no estaba en
+  pausa) desde que terminó el anuncio anterior hasta que empezó este. Con la media de esta
+  columna puedes calcular «un anuncio cada X minutos de visionado»; con su inversa, anuncios
+  por hora. No cuenta el tiempo con el vídeo en pausa ni, para el primer anuncio de la sesión,
+  nada anterior a esa sesión.
 - `ad_label`: el mismo texto/contador ya usado para detectar el anuncio (normalmente «Anuncio
   · 15»).
 - `advertiser_guess`: **experimental**. Recorre todo el texto visible del reproductor
@@ -56,7 +61,7 @@ las 5000 filas más recientes.
 ## Actualizar y comprobar
 
 1. Si instalaste el ZIP antiguo, carga la carpeta `desktop` de este repositorio y desactiva la copia antigua.
-2. En `chrome://extensions` o `edge://extensions`, pulsa **Recargar** en skipadstube y comprueba la versión **0.1.10**.
+2. En `chrome://extensions` o `edge://extensions`, pulsa **Recargar** en skipadstube y comprueba la versión **1.0.0**.
 3. Recarga también la pestaña de YouTube para que use el nuevo código.
 4. Comprueba que **Omitir automáticamente** está activado y que la extensión tiene acceso a `www.youtube.com`.
 5. Prueba un anuncio con botón de omitir: debe pulsarlo cuando esté disponible. Los anuncios sin botón se silencian, pero no se pueden omitir con esta extensión.

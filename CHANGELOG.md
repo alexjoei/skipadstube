@@ -2,6 +2,35 @@
 
 ## Unreleased  
 
+### Android 1.0.0 / Desktop 1.0.0 — 2026-10-03
+
+- Add `content_ms_before_ad`: time spent watching since the previous ad ended (0 for the first
+  ad of a session), so "an ad every X minutes" and "ads per hour" are directly computable from
+  the average of this column — this is what the user asked for after the previous release.
+- Desktop measures this precisely: only counts time the `<video>` element is actually unpaused
+  (`!media.paused`), reset to not counting on every poll where it's paused. Android cannot read
+  play/pause state reliably via Accessibility (no confirmed resource id for that control), so it
+  counts "YouTube foreground with the player on screen and no ad" instead — this still excludes
+  backgrounded-app time, but a paused video left on screen is still counted as watched, unlike
+  on desktop. Documented this platform difference explicitly in both READMEs rather than
+  pretending the two columns mean exactly the same thing.
+- `AdStatsRecorder.update()` (Android) gained a `playerVisible` parameter so the three
+  early-return/flush call sites can tell the recorder "we don't know, don't count this gap" vs.
+  the normal poll path's "player is visible right now."
+- Android: `content_ms_before_ad` inserted into `ad_stats.csv` right after `pod_position`. Added
+  4 new `AdStatsRecorderTest` cases (now 15 total). All 43 unit tests pass. Generated
+  `dist/skipadstube-1.0.0.apk` (version code 13); metadata and signature verified.
+- Desktop: same column added to the CSV export and the `chrome.storage.local` row shape. Added 2
+  new `content-stats.test.cjs` cases (now 18 desktop tests total, all passing). Packaged
+  `dist/skipadstube-desktop-1.0.0.zip`.
+- Bumped both platforms to 1.0.0 together (no behavior reason beyond the version number — this
+  is still a debug-signed test build, not a Play Store / Web Store release).
+- Not yet exercised on a real device/browser for this change: `content_ms_before_ad` is verified
+  only by the unit tests above, with real wall-clock timing for the desktop "unpaused" tests and
+  a fake clock for Android's.
+- APK SHA-256: `9010d5ff4d710f537352e76222fa8f346db86954c04373b625ac78f6d3d5ad86`.
+- Desktop zip SHA-256: `20fc2c5ca6a9a744b7c529baa9074edf6587fc18dd6912d11b6fd749a822ecb7`.
+
 ### Android 0.2.10 / Desktop 0.1.10 — 2026-10-03
 
 - Add an in-app, easy-access way to get `ad_stats.csv` off the device: a "Compartir

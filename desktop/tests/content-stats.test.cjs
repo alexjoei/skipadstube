@@ -21,7 +21,7 @@ function run({ skipAds = true, brandText = null } = {}) {
     },
     querySelector: selector => (adPresent && selector === '.ytp-ad-text' ? adTextEl : null)
   };
-  const media = { muted: false };
+  const media = { muted: false, paused: false };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../content.js'), 'utf8'), {
     document: { visibilityState: 'visible', documentElement: {},
       querySelector: s => s === '#movie_player' ? root : media, elementFromPoint: () => button },
@@ -33,7 +33,7 @@ function run({ skipAds = true, brandText = null } = {}) {
     getComputedStyle: () => ({ display: 'block', visibility: 'visible', opacity: '1' }),
     MutationObserver: class { observe() {} }, setInterval: fn => { poll = fn; }
   });
-  return { messages, setAdPresent: value => { adPresent = value; }, poll };
+  return { messages, media, setAdPresent: value => { adPresent = value; }, poll };
 }
 
 function lastStat(app) {
@@ -88,6 +88,48 @@ test('a non-generic text in the player is captured as advertiserGuess', async ()
   app.poll();
   await new Promise(setImmediate);
   assert.equal(lastStat(app).advertiserGuess, 'Visita ejemplo.com');
+});
+
+test('content time before an ad stays at 0 while the video is paused the whole gap', async () => {
+  const app = run();
+  await new Promise(setImmediate);
+  app.messages.length = 0;
+  app.setAdPresent(false);
+  app.poll();
+  await new Promise(setImmediate);
+  app.media.paused = true;
+  for (let i = 0; i < 4; i++) {
+    app.poll();
+    await new Promise(setImmediate);
+  }
+  app.setAdPresent(true);
+  app.poll();
+  await new Promise(setImmediate);
+  app.setAdPresent(false);
+  app.poll();
+  await new Promise(setImmediate);
+  assert.equal(lastStat(app).contentMsBeforeAd, 0);
+});
+
+test('content time before an ad grows while the video plays unpaused between ads', async () => {
+  const app = run();
+  await new Promise(setImmediate);
+  app.messages.length = 0;
+  app.setAdPresent(false);
+  app.poll();
+  await new Promise(setImmediate);
+  app.media.paused = false;
+  for (let i = 0; i < 3; i++) {
+    app.poll();
+    await new Promise(resolve => setTimeout(resolve, 15));
+  }
+  app.setAdPresent(true);
+  app.poll();
+  await new Promise(setImmediate);
+  app.setAdPresent(false);
+  app.poll();
+  await new Promise(setImmediate);
+  assert.ok(lastStat(app).contentMsBeforeAd > 0);
 });
 
 test('a second ad right after the first shares the pod and increments position', async () => {

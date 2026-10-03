@@ -82,7 +82,7 @@ public final class YouTubeAutomationService extends AccessibilityService {
         if (root == null) {
             RuntimeStatus.scan = "No se puede leer la ventana activa";
             finish();
-            if (stats != null) stats.update(false, null, false, false, null);
+            if (stats != null) stats.update(false, null, false, false, null, false);
             return;
         }
         ScanResult result = new ScanResult();
@@ -90,11 +90,12 @@ public final class YouTubeAutomationService extends AccessibilityService {
             if (root.getPackageName() == null || !YOUTUBE.contentEquals(root.getPackageName())) {
                 RuntimeStatus.scan = "Abre YouTube para comprobar los anuncios";
                 finish();
-                if (stats != null) stats.update(false, null, false, false, null);
+                if (stats != null) stats.update(false, null, false, false, null, false);
                 return;
             }
             java.util.List<AccessibilityNodeInfo> players = root.findAccessibilityNodeInfosByViewId(
                 YOUTUBE + ":id/watch_player");
+            boolean playerVisible = !players.isEmpty();
             try {
                 for (AccessibilityNodeInfo player : players) {
                     if (player.refresh()) scan(player, result);
@@ -123,7 +124,7 @@ public final class YouTubeAutomationService extends AccessibilityService {
                 lastClick = now;
                 clicked = true;
             }
-            if (stats != null) stats.update(ad, result.adLabel, clicked, skipAvailable, result.advertiserGuess);
+            if (stats != null) stats.update(ad, result.adLabel, clicked, skipAvailable, result.advertiserGuess, playerVisible);
         } finally {
             root.recycle();
             if (result.skipNode != null) result.skipNode.recycle();
@@ -184,7 +185,7 @@ public final class YouTubeAutomationService extends AccessibilityService {
         RuntimeStatus.connected = false;
         handler.removeCallbacksAndMessages(null);
         if (settings != null) settings.unregisterOnSharedPreferenceChangeListener(settingsChanged);
-        if (stats != null) stats.update(false, null, false, false, null);
+        if (stats != null) stats.update(false, null, false, false, null, false);
         finish();
         super.onDestroy();
     }

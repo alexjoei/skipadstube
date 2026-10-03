@@ -1,11 +1,11 @@
-# skipadstube MVP 0.2.10 (Android)
+# skipadstube MVP 1.0.0 (Android)
 
 Aplicación local que observa exclusivamente la interfaz de la app oficial de YouTube,
 silencia el audio al detectar un anuncio y pulsa el botón de omitir cuando aparece.
 
 ## Estado
 
-- MVP 0.2.10, con el nombre e identificador skipadstube.
+- MVP 1.0.0, con el nombre e identificador skipadstube.
 - Sin permiso de Internet ni analítica. Desde la 0.2.9 guarda localmente, en `ad_stats.csv`
   (ver [Estadísticas de anuncios](#estadísticas-de-anuncios)), un registro de cada anuncio para poder
   analizarlo más adelante; ese archivo nunca sale del dispositivo.
@@ -48,7 +48,7 @@ no cada sondeo) como una fila CSV en `ad_stats.csv`, dentro del almacenamiento e
 la app (`getExternalFilesDir(null)`, con `getFilesDir()` como alternativa si no está disponible).
 No requiere ningún permiso adicional ni usa Internet.
 
-Columnas: `start,end,duration_ms,declared_seconds,time_to_skip_ms,skippable,skipped,pod_position,ad_label,advertiser_guess`
+Columnas: `start,end,duration_ms,declared_seconds,time_to_skip_ms,skippable,skipped,pod_position,content_ms_before_ad,ad_label,advertiser_guess`
 
 - `start` / `end` / `duration_ms`: marca de tiempo ISO 8601 de inicio y fin, y duración observada
   en milisegundos.
@@ -64,6 +64,16 @@ Columnas: `start,end,duration_ms,declared_seconds,time_to_skip_ms,skippable,skip
 - `pod_position`: posición de este anuncio dentro de una tanda de anuncios seguidos (1, 2, 3…);
   vuelve a 1 si pasan más de 3 segundos entre el fin de un anuncio y el inicio del siguiente. Con
   esto se puede saber si en una pausa salió un solo anuncio o varios encadenados.
+- `content_ms_before_ad`: milisegundos con el reproductor de YouTube visible y sin anuncio desde
+  que terminó el anuncio anterior hasta que empezó este (0 para el primer anuncio de la sesión).
+  Es la base para "cada cuánto tiempo sale un anuncio": con la media de esta columna se calcula
+  "un anuncio cada X minutos", y con su inversa, anuncios por hora. Importante: en Android no hay
+  forma fiable de saber si el vídeo está en pausa o reproduciéndose (no hemos confirmado ningún
+  identificador de accesibilidad para el botón de play/pausa), así que esto cuenta "app en primer
+  plano con el reproductor en pantalla", no "reproduciendo activamente" — si dejas el vídeo en
+  pausa con la pantalla encendida, ese tiempo sí se contabiliza aquí (a diferencia de la versión de
+  escritorio, que sí puede comprobar la pausa real del `<video>`). Si sales de YouTube o cambias de
+  app, ese hueco no se cuenta.
 - `ad_label`: el primer texto o descripción no vacío de los nodos ya clasificados como señal de
   anuncio por `DetectionRules` (en la mayoría de pantallas observadas, solo el contador «Anuncio ·
   15»).

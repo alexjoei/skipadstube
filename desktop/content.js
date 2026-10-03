@@ -37,9 +37,14 @@
   let skipAvailableAt = -1;
   let lastAdEndAt = -1;
   let podPosition = 0;
+  // Accumulates while the video is actually playing (not paused) and no ad is showing; frozen
+  // into contentMsSnapshot the moment the next ad starts, then reset to zero.
+  let contentMs = 0;
+  let lastContentTickAt = -1;
+  let contentMsSnapshot = 0;
   let status = { ad: false, buttonFound: false, skipEnabled: true, clickAttempts: 0 };
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
-    if (message.type === 'skipadstube-status') respond({ ...status, version: '0.1.10', browserResult });
+    if (message.type === 'skipadstube-status') respond({ ...status, version: '1.0.0', browserResult });
     if (message.type === 'skipadstube-point') {
       const button = settings.skipAds && document.visibilityState === 'visible' && findSkipButton(player(), isAdPlaying());
       if (!button) { respond(null); return; }
@@ -161,6 +166,9 @@
       skippable = false;
       skipAvailableAt = -1;
       podPosition = (lastAdEndAt >= 0 && adStartAt - lastAdEndAt <= POD_GAP_MS) ? podPosition + 1 : 1;
+      contentMsSnapshot = contentMs;
+      contentMs = 0;
+      lastContentTickAt = -1;
       videoMutedBeforeAd = media ? media.muted : false;
       if (settings.softChimes) chime(true);
     }
@@ -178,7 +186,8 @@
     const row = { start: adStartAt, end, durationMs: end - adStartAt,
       declaredSeconds: parseDeclaredSeconds(adLabel),
       timeToSkipMs: skipAvailableAt >= 0 ? skipAvailableAt - adStartAt : null,
-      skippable, skipped: adSkipped, podPosition, label: adLabel, advertiserGuess };
+      skippable, skipped: adSkipped, podPosition, contentMsBeforeAd: contentMsSnapshot,
+      label: adLabel, advertiserGuess };
     lastAdEndAt = end;
     chrome.runtime.sendMessage({ type: 'skipadstube-ad-stat', row }).catch(() => {});
   }
@@ -193,6 +202,17 @@
     if (adActive && skipButton) {
       skippable = true;
       if (skipAvailableAt < 0) skipAvailableAt = Date.now();
+    }
+    // Content-watched time: only counts while actually playing (not paused), so pauses and
+    // backgrounded tabs never inflate "how much did I watch before this ad" below.
+    if (!adActive) {
+      if (media && !media.paused) {
+        const now = Date.now();
+        if (lastContentTickAt >= 0) contentMs += now - lastContentTickAt;
+        lastContentTickAt = now;
+      } else {
+        lastContentTickAt = -1;
+      }
     }
     // Bound retries when a click leaves the control visible. Attempts are not
     // counted as successful skips: only the user/player can confirm that.

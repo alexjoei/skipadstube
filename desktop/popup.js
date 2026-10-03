@@ -27,7 +27,7 @@ setInterval(updateStatus, 1000);
 
 document.getElementById('downloadStats').addEventListener('click', async () => {
   const { adStats = [] } = await chrome.storage.local.get({ adStats: [] });
-  const header = 'start,end,duration_ms,declared_seconds,time_to_skip_ms,skippable,skipped,pod_position,ad_label,advertiser_guess';
+  const header = 'start,end,duration_ms,declared_seconds,time_to_skip_ms,skippable,skipped,pod_position,content_ms_before_ad,ad_label,advertiser_guess';
   const csvText = value => value ? `"${String(value).replace(/"/g, '""')}"` : '';
   const rows = adStats.map(row => [
     new Date(row.start).toISOString(),
@@ -38,6 +38,7 @@ document.getElementById('downloadStats').addEventListener('click', async () => {
     Boolean(row.skippable),
     Boolean(row.skipped),
     row.podPosition ?? '',
+    row.contentMsBeforeAd ?? '',
     csvText(row.label),
     csvText(row.advertiserGuess)
   ].join(','));

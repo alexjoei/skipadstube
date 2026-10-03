@@ -5,15 +5,16 @@ package com.skipadstube.app;
  * observed duration, the ad's own declared length when parseable, how long the
  * skip control took to appear (if it ever did), whether the ad was skippable at
  * all, whether our own click fired, this ad's position within a back-to-back run
- * (pod) of ads, and two best-effort text columns. Keeps no clock or file access so
- * the state machine stays unit-testable without Android.
+ * (pod) of ads, how long the YouTube player was visible with no ad right before
+ * this one started, and two best-effort text columns. Keeps no clock or file
+ * access so the state machine stays unit-testable without Android.
  */
 final class AdStatsRecorder {
     interface Clock { long now(); }
     interface Sink { void append(String row); }
 
-    static final String HEADER =
-        "start,end,duration_ms,declared_seconds,time_to_skip_ms,skippable,skipped,pod_position,ad_label,advertiser_guess";
+    static final String HEADER = "start,end,duration_ms,declared_seconds,time_to_skip_ms,skippable,"
+        + "skipped,pod_position,content_ms_before_ad,ad_label,advertiser_guess";
     // A gap this short or shorter between one ad ending and the next starting is treated
     // as the same ad break (a "pod") rather than a separate, unrelated ad later.
     private static final long POD_GAP_MS = 3000;
@@ -28,13 +29,19 @@ final class AdStatsRecorder {
     private String advertiserGuess = "";
     private long lastAdEndMillis = -1;
     private int podPosition;
+    // Accumulates while the player is visible and no ad is showing; frozen into
+    // contentMsSnapshot the moment the next ad starts, then reset to zero.
+    private long contentMs;
+    private long lastContentTickMillis = -1;
+    private long contentMsSnapshot;
 
     AdStatsRecorder(Clock clock, Sink sink) {
         this.clock = clock;
         this.sink = sink;
     }
 
-    void update(boolean adDetected, String adLabel, boolean skipClicked, boolean skipAvailable, String guess) {
+    void update(boolean adDetected, String adLabel, boolean skipClicked, boolean skipAvailable,
+            String guess, boolean playerVisible) {
         if (adDetected) {
             long now = clock.now();
             if (startMillis < 0) {
@@ -45,6 +52,9 @@ final class AdStatsRecorder {
                 label = "";
                 advertiserGuess = "";
                 podPosition = (lastAdEndMillis >= 0 && now - lastAdEndMillis <= POD_GAP_MS) ? podPosition + 1 : 1;
+                contentMsSnapshot = contentMs;
+                contentMs = 0;
+                lastContentTickMillis = -1;
             }
             if (label.isEmpty() && adLabel != null && !adLabel.isEmpty()) label = adLabel;
             if (advertiserGuess.isEmpty() && guess != null && !guess.isEmpty()) advertiserGuess = guess;
@@ -55,21 +65,30 @@ final class AdStatsRecorder {
             if (skipClicked) skipped = true;
             return;
         }
+        if (playerVisible) {
+            long now = clock.now();
+            if (lastContentTickMillis >= 0) contentMs += now - lastContentTickMillis;
+            lastContentTickMillis = now;
+        } else {
+            // App backgrounded or off YouTube: don't count this gap as watched content time.
+            lastContentTickMillis = -1;
+        }
         if (startMillis < 0) return;
         long endMillis = clock.now();
         long timeToSkipMs = skipAvailableAtMillis >= 0 ? skipAvailableAtMillis - startMillis : -1;
-        sink.append(row(startMillis, endMillis, timeToSkipMs, skippable, skipped, podPosition, label, advertiserGuess));
+        sink.append(row(startMillis, endMillis, timeToSkipMs, skippable, skipped, podPosition,
+            contentMsSnapshot, label, advertiserGuess));
         lastAdEndMillis = endMillis;
         startMillis = -1;
     }
 
     static String row(long startMillis, long endMillis, long timeToSkipMs, boolean skippable,
-            boolean skipped, int podPosition, String label, String advertiserGuess) {
+            boolean skipped, int podPosition, long contentMsBeforeAd, String label, String advertiserGuess) {
         Integer declaredSeconds = parseDeclaredSeconds(label);
         return iso(startMillis) + "," + iso(endMillis) + "," + (endMillis - startMillis) + ","
             + (declaredSeconds == null ? "" : declaredSeconds) + ","
             + (timeToSkipMs < 0 ? "" : timeToSkipMs) + ","
-            + skippable + "," + skipped + "," + podPosition + ","
+            + skippable + "," + skipped + "," + podPosition + "," + contentMsBeforeAd + ","
             + escape(label) + "," + escape(advertiserGuess);
     }
 
