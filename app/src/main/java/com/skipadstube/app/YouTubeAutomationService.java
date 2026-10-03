@@ -14,6 +14,7 @@ public final class YouTubeAutomationService extends AccessibilityService {
     private static final String YOUTUBE = "com.google.android.youtube";
     private final Handler handler = new Handler(Looper.getMainLooper());
     private AdAudioController controller;
+    private AdStatsRecorder stats;
     private SharedPreferences settings;
     private long lastClick;
     private final Runnable poll = new Runnable() {
@@ -64,6 +65,7 @@ public final class YouTubeAutomationService extends AccessibilityService {
             }
             public void chime(boolean start) { SoftChime.play(start); }
         });
+        stats = new AdStatsRecorder(System::currentTimeMillis, new AdStatsFile(this));
         settings = getSharedPreferences("skipadstube", MODE_PRIVATE);
         settings.registerOnSharedPreferenceChangeListener(settingsChanged);
         handler.removeCallbacks(poll);
@@ -77,12 +79,19 @@ public final class YouTubeAutomationService extends AccessibilityService {
     private void inspect() {
         if (controller == null) return;
         AccessibilityNodeInfo root = getRootInActiveWindow();
-        if (root == null) { RuntimeStatus.scan = "No se puede leer la ventana activa"; finish(); return; }
+        if (root == null) {
+            RuntimeStatus.scan = "No se puede leer la ventana activa";
+            finish();
+            if (stats != null) stats.update(false, null, false);
+            return;
+        }
         ScanResult result = new ScanResult();
         try {
             if (root.getPackageName() == null || !YOUTUBE.contentEquals(root.getPackageName())) {
                 RuntimeStatus.scan = "Abre YouTube para comprobar los anuncios";
-                finish(); return;
+                finish();
+                if (stats != null) stats.update(false, null, false);
+                return;
             }
             java.util.List<AccessibilityNodeInfo> players = root.findAccessibilityNodeInfosByViewId(
                 YOUTUBE + ":id/watch_player");
@@ -107,11 +116,14 @@ public final class YouTubeAutomationService extends AccessibilityService {
                     + "; canal silenciado: " + (audio.isStreamMute(AudioManager.STREAM_MUSIC) ? "sí" : "no")
                     + (settings.getBoolean("mute_ads", true) ? "; silencio activado" : "; silencio desactivado");
             }
+            boolean clicked = false;
             if (result.skipNode != null && settings.getBoolean("skip_ads", true)
                     && now - lastClick >= 1000) {
                 click(result.skipNode);
                 lastClick = now;
+                clicked = true;
             }
+            if (stats != null) stats.update(ad, result.adLabel, clicked);
         } finally {
             root.recycle();
             if (result.skipNode != null) result.skipNode.recycle();
@@ -122,9 +134,17 @@ public final class YouTubeAutomationService extends AccessibilityService {
         if (++result.visited > 512 || (result.adDetected && result.skipNode != null)) return;
         if (node.isVisibleToUser()) {
             String id = node.getViewIdResourceName();
-            if (DetectionRules.isAdSignal(id, node.getText(), node.getContentDescription())) result.adDetected = true;
+            CharSequence text = node.getText();
+            CharSequence description = node.getContentDescription();
+            if (DetectionRules.isAdSignal(id, text, description)) {
+                result.adDetected = true;
+                if (result.adLabel == null) {
+                    CharSequence label = text != null && text.length() > 0 ? text : description;
+                    if (label != null && label.length() > 0) result.adLabel = label.toString();
+                }
+            }
             if (result.skipNode == null && node.isEnabled()
-                    && DetectionRules.isSkip(id, node.getText(), node.getContentDescription())) {
+                    && DetectionRules.isSkip(id, text, description)) {
                 result.skipNode = AccessibilityNodeInfo.obtain(node);
             }
         }
@@ -158,8 +178,9 @@ public final class YouTubeAutomationService extends AccessibilityService {
         RuntimeStatus.connected = false;
         handler.removeCallbacksAndMessages(null);
         if (settings != null) settings.unregisterOnSharedPreferenceChangeListener(settingsChanged);
+        if (stats != null) stats.update(false, null, false);
         finish();
         super.onDestroy();
     }
-    private static final class ScanResult { boolean adDetected; AccessibilityNodeInfo skipNode; int visited; }
+    private static final class ScanResult { boolean adDetected; String adLabel; AccessibilityNodeInfo skipNode; int visited; }
 }

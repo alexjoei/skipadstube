@@ -7,5 +7,6 @@ final class RuntimeStatus {
     static volatile String lastAd = "Todavía no se ha detectado ningún anuncio";
     static volatile String audioError = "";
     static volatile String sound = "Sin probar";
+    static volatile String stats = "Sin estadísticas de anuncios todavía";
     private RuntimeStatus() {}
 }

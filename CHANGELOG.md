@@ -2,6 +2,30 @@
 
 ## Unreleased  
 
+### Android 0.2.9 — 2026-10-03
+
+- Add local ad statistics: `YouTubeAutomationService` now records each ad occurrence (start, end,
+  duration, whether our skip click fired, and the first non-empty label/description already
+  classified as an ad signal) as one CSV row in `ad_stats.csv` under app-specific storage
+  (`getExternalFilesDir`, falling back to `getFilesDir`). No new permission; the app still has no
+  Internet access and nothing leaves the device. New `AdStatsRecorder` (pure state machine) and
+  `AdStatsFile` (file sink); wired into `YouTubeAutomationService.inspect()`/`onDestroy()` so a
+  pending ad is flushed if the service is destroyed or the user leaves YouTube mid-ad.
+- Show a running count and the file path in the app's diagnostics (`RuntimeStatus.stats`), and
+  disclose the local-only log in the main screen's description text and README.
+- The `ad_label` column is best-effort: it reuses whatever text/description the existing
+  `DetectionRules` ad-signal match already read (today mostly the ad countdown, e.g. "Anuncio ·
+  15"). Whether YouTube ever exposes the advertiser name itself (e.g. Repsol) through that same
+  node has not been confirmed on a real device; treat the column as unverified for that purpose
+  until checked against a live ad.
+- Add 8 unit tests for `AdStatsRecorder` (CSV row construction, label capture precedence, CSV
+  quote escaping, skip-click flag, consecutive ads). All 33 unit tests pass (25 previous + 8 new).
+- Generated `dist/skipadstube-0.2.9.apk` (version code 11); package metadata (`com.skipadstube.app`,
+  versionName 0.2.9, only `MODIFY_AUDIO_SETTINGS`) and the debug signature were verified with aapt
+  and apksigner. Not yet installed or exercised on a real device, so the CSV file has not been
+  observed being written from an actual ad.
+- APK SHA-256: `7d5cc490efa93362222fcf49a3cc8f683b11472939ad886824930877fc419903`.
+
 ### Android 0.2.8 / Desktop 0.1.8 — 2026-09-16
 
 - Replace the app and browser-extension icon with the new "AD skip" artwork (assets/logo.png), regenerated at all Android launcher densities (mdpi–xxxhdpi, standard and foreground) and desktop extension sizes (16/32/48/128px) via `scripts/generate-icons.ps1`. No behavior changes.

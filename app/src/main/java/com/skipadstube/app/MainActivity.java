@@ -26,10 +26,11 @@ public final class MainActivity extends Activity {
             AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
             int stream = RuntimeStatus.connected ? AudioManager.STREAM_ACCESSIBILITY : AudioManager.STREAM_MUSIC;
             setVolumeControlStream(stream);
-            diagnostics.setText("Versión 0.2.7 · Servicio " + (RuntimeStatus.connected ? "conectado" : "desconectado")
+            diagnostics.setText("Versión 0.2.9 · Servicio " + (RuntimeStatus.connected ? "conectado" : "desconectado")
                 + "\n" + RuntimeStatus.scan + "\n" + RuntimeStatus.lastAd
                 + "\nVolumen de avisos: " + audio.getStreamVolume(stream) + "/" + audio.getStreamMaxVolume(stream)
                 + "\n" + RuntimeStatus.sound
+                + "\n" + RuntimeStatus.stats
                 + (audio.isVolumeFixed() ? "\nEl dispositivo indica volumen fijo" : "")
                 + (RuntimeStatus.audioError.isEmpty() ? "" : "\n" + RuntimeStatus.audioError));
             refreshHandler.postDelayed(this, 500);
@@ -51,7 +52,7 @@ public final class MainActivity extends Activity {
         root.addView(title);
 
         TextView info = new TextView(this);
-        info.setText("Automatización local y limitada a YouTube. No usa Internet ni recopila datos. Activa el servicio y después reproduce un vídeo con anuncios.");
+        info.setText("Automatización local y limitada a YouTube. No usa Internet; guarda en tu propio dispositivo un registro de estadísticas de anuncios (ad_stats.csv) que no se envía a ningún sitio. Activa el servicio y después reproduce un vídeo con anuncios.");
         info.setTextSize(16); info.setPadding(0, pad, 0, pad);
         root.addView(info);
 

@@ -1,12 +1,14 @@
-# skipadstube MVP 0.2.7 (Android)
+# skipadstube MVP 0.2.9 (Android)
 
 Aplicación local que observa exclusivamente la interfaz de la app oficial de YouTube,
 silencia el audio al detectar un anuncio y pulsa el botón de omitir cuando aparece.
 
 ## Estado
 
-- MVP 0.2.7, con el nombre e identificador skipadstube.
-- Sin permiso de Internet, analítica ni recopilación de datos.
+- MVP 0.2.9, con el nombre e identificador skipadstube.
+- Sin permiso de Internet ni analítica. Desde la 0.2.9 guarda localmente, en `ad_stats.csv`
+  (ver [Estadísticas de anuncios](#estadísticas-de-anuncios)), un registro de cada anuncio para poder
+  analizarlo más adelante; ese archivo nunca sale del dispositivo.
 - Funciona mediante el servicio de Accesibilidad, sin ventanas ni botones flotantes. El acceso directo de Android es opcional; puede desactivarse manteniendo el servicio activo.
 - Android 8 o posterior. Silencio y restauración comprobados mediante el estado de audio de un Realme RMX3851 con Android 15; otros modelos pendientes.
 - Reglas desacopladas en `DetectionRules.java` para poder corregir cambios de interfaz.
@@ -38,6 +40,29 @@ de Accesibilidad; los ajustes anteriores no se migran.
 | Dos anuncios consecutivos | Permanece silenciado hasta terminar ambos |
 | Salir de YouTube durante anuncio | Restaura el volumen |
 | Vídeo o título que contiene «anuncio» | No debe silenciar por falso positivo |
+
+## Estadísticas de anuncios
+
+Desde la 0.2.9, `YouTubeAutomationService` registra cada anuncio detectado (de inicio a fin,
+no cada sondeo) como una fila CSV en `ad_stats.csv`, dentro del almacenamiento específico de
+la app (`getExternalFilesDir(null)`, con `getFilesDir()` como alternativa si no está disponible).
+No requiere ningún permiso adicional ni usa Internet.
+
+Columnas: `start,end,duration_ms,skipped,ad_label`
+
+- `start` / `end`: marca de tiempo local ISO 8601 de la detección y el fin de la señal de anuncio.
+- `duration_ms`: duración observada del anuncio, en milisegundos.
+- `skipped`: `true` si nuestro propio clic de «Omitir» se disparó durante ese anuncio.
+- `ad_label`: el primer texto o descripción no vacío de los nodos ya clasificados como señal de
+  anuncio por `DetectionRules`. En dispositivos donde YouTube expone el anunciante (p. ej. «Repsol»)
+  en ese nodo, quedará aquí; en la mayoría de pantallas observadas solo contiene el contador del
+  anuncio («Anuncio · 15»). No hemos verificado en un dispositivo real que el nombre del anunciante
+  aparezca ahí: considera esta columna como mejor esfuerzo hasta confirmarlo.
+
+Para extraerlo: `adb pull /sdcard/Android/data/com.skipadstube.app/files/ad_stats.csv` (o el
+gestor de archivos del propio dispositivo) y analizarlo con cualquier hoja de cálculo o script
+(frecuencia por hora, duración media, proporción de anuncios omitidos, etc.). El archivo crece de
+forma indefinida; de momento no hay rotación ni límite de tamaño.
 
 ## Camino hacia una versión pública
 
