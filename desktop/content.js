@@ -11,6 +11,15 @@
   // Best-effort label for ad_stats rows: reuses whatever on-screen ad text is already
   // visible, same as the Android app. Not confirmed to ever contain the advertiser name.
   const AD_LABEL_SELECTORS = ['.ytp-ad-text', '.ytp-ad-simple-ad-badge', '.ytp-ad-preview-text'];
+  // Common player-chrome labels visible during an ad that are not the ad itself. Filters
+  // candidates for the best-effort advertiserGuess field; necessarily incomplete.
+  const AD_NOISE_LABELS = new Set(['mas', 'more', 'configuracion', 'settings', 'pantalla completa',
+    'full screen', 'fullscreen', 'subtitulos', 'subtitles', 'captions', 'reproducir', 'play',
+    'pausa', 'pause', 'silenciar', 'mute', 'activar sonido', 'unmute', 'siguiente', 'next',
+    'anterior', 'previous', 'cerrar', 'close', 'suscribirse', 'subscribe', 'youtube', 'compartir', 'share']);
+  // A gap this short or shorter between one ad ending and the next starting is treated as the
+  // same ad break (a "pod") rather than a separate, unrelated ad later.
+  const POD_GAP_MS = 3000;
 
   let settings = { ...DEFAULTS };
   let adActive = false;
@@ -23,9 +32,14 @@
   let adStartAt = 0;
   let adSkipped = false;
   let adLabel = '';
+  let advertiserGuess = '';
+  let skippable = false;
+  let skipAvailableAt = -1;
+  let lastAdEndAt = -1;
+  let podPosition = 0;
   let status = { ad: false, buttonFound: false, skipEnabled: true, clickAttempts: 0 };
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
-    if (message.type === 'skipadstube-status') respond({ ...status, version: '0.1.9', browserResult });
+    if (message.type === 'skipadstube-status') respond({ ...status, version: '0.1.10', browserResult });
     if (message.type === 'skipadstube-point') {
       const button = settings.skipAds && document.visibilityState === 'visible' && findSkipButton(player(), isAdPlaying());
       if (!button) { respond(null); return; }
@@ -98,17 +112,61 @@
     return '';
   }
 
+  function normalizeForNoiseCheck(value) {
+    return (value || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  function isAdNoise(value) {
+    const normalized = normalizeForNoiseCheck(value);
+    if (normalized.length < 2) return true;
+    if (/^\d+(:\d{2})?$/.test(normalized)) return true;
+    if (/^(anuncio|publicidad|ad)\s*[·•:–-]\s*\d+/.test(normalized)) return true;
+    if (/^(skip|omitir|saltar)\b/.test(normalized)) return true;
+    return AD_NOISE_LABELS.has(normalized);
+  }
+
+  // Best-effort: scans every visible element in the player, not just the known ad-signal
+  // selectors, looking for any text that isn't player chrome or the countdown. Only kept by the
+  // caller once an ad is confirmed playing, so an ordinary video's title/controls never leak in.
+  // Noisy by nature; not confirmed to ever surface the advertiser's name.
+  function findAdvertiserGuess() {
+    const root = player();
+    if (!root || typeof root.querySelectorAll !== 'function') return '';
+    for (const element of root.querySelectorAll('*')) {
+      const candidates = [element.textContent, element.getAttribute && element.getAttribute('aria-label')];
+      for (const candidate of candidates) {
+        const text = (candidate || '').toString().trim();
+        if (text && text.length < 80 && !isAdNoise(text)) return text;
+      }
+    }
+    return '';
+  }
+
+  function parseDeclaredSeconds(label) {
+    if (!label) return null;
+    const minutes = label.match(/(\d+):(\d{2})/);
+    if (minutes) return Number(minutes[1]) * 60 + Number(minutes[2]);
+    const seconds = label.match(/\b(\d{1,3})\b/);
+    return seconds ? Number(seconds[1]) : null;
+  }
+
   function beginAd(media) {
     if (!adActive) {
       adActive = true;
       adStartAt = Date.now();
       adSkipped = false;
       adLabel = '';
+      advertiserGuess = '';
+      skippable = false;
+      skipAvailableAt = -1;
+      podPosition = (lastAdEndAt >= 0 && adStartAt - lastAdEndAt <= POD_GAP_MS) ? podPosition + 1 : 1;
       videoMutedBeforeAd = media ? media.muted : false;
       if (settings.softChimes) chime(true);
     }
     if (media && settings.muteAds) media.muted = true;
     if (!adLabel) adLabel = findAdLabel();
+    if (!advertiserGuess) advertiserGuess = findAdvertiserGuess();
   }
 
   function endAd(media) {
@@ -116,8 +174,12 @@
     if (media && settings.muteAds) media.muted = videoMutedBeforeAd;
     adActive = false;
     if (settings.softChimes) chime(false);
-    const row = { start: adStartAt, end: Date.now(), durationMs: Date.now() - adStartAt,
-      skipped: adSkipped, label: adLabel };
+    const end = Date.now();
+    const row = { start: adStartAt, end, durationMs: end - adStartAt,
+      declaredSeconds: parseDeclaredSeconds(adLabel),
+      timeToSkipMs: skipAvailableAt >= 0 ? skipAvailableAt - adStartAt : null,
+      skippable, skipped: adSkipped, podPosition, label: adLabel, advertiserGuess };
+    lastAdEndAt = end;
     chrome.runtime.sendMessage({ type: 'skipadstube-ad-stat', row }).catch(() => {});
   }
 
@@ -128,6 +190,10 @@
     const adDetected = isAdPlaying();
     const skipButton = findSkipButton(player(), adDetected);
     if (adDetected || skipButton) beginAd(media); else endAd(media);
+    if (adActive && skipButton) {
+      skippable = true;
+      if (skipAvailableAt < 0) skipAvailableAt = Date.now();
+    }
     // Bound retries when a click leaves the control visible. Attempts are not
     // counted as successful skips: only the user/player can confirm that.
     if (settings.skipAds && skipButton && Date.now() - lastClickAt >= 1000) {

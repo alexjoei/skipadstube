@@ -3,6 +3,7 @@ package com.skipadstube.app;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.ViewGroup;
@@ -13,9 +14,11 @@ import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.ScrollView;
+import android.widget.Toast;
 import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
+import java.io.File;
 
 public final class MainActivity extends Activity {
     private static final String PREFS = "skipadstube";
@@ -26,7 +29,7 @@ public final class MainActivity extends Activity {
             AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
             int stream = RuntimeStatus.connected ? AudioManager.STREAM_ACCESSIBILITY : AudioManager.STREAM_MUSIC;
             setVolumeControlStream(stream);
-            diagnostics.setText("Versión 0.2.9 · Servicio " + (RuntimeStatus.connected ? "conectado" : "desconectado")
+            diagnostics.setText("Versión 0.2.10 · Servicio " + (RuntimeStatus.connected ? "conectado" : "desconectado")
                 + "\n" + RuntimeStatus.scan + "\n" + RuntimeStatus.lastAd
                 + "\nVolumen de avisos: " + audio.getStreamVolume(stream) + "/" + audio.getStreamMaxVolume(stream)
                 + "\n" + RuntimeStatus.sound
@@ -70,6 +73,10 @@ public final class MainActivity extends Activity {
             view.postDelayed(() -> SoftChime.play(false), 650);
         });
         root.addView(preview);
+        Button shareStats = new Button(this);
+        shareStats.setText("Compartir estadísticas de anuncios (CSV)");
+        shareStats.setOnClickListener(view -> shareAdStats());
+        root.addView(shareStats);
         diagnostics = new TextView(this);
         diagnostics.setTextColor(Color.DKGRAY);
         diagnostics.setPadding(0, pad, 0, pad);
@@ -91,6 +98,20 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(root);
         setContentView(scroll);
+    }
+
+    private void shareAdStats() {
+        File dir = getExternalFilesDir(null);
+        File file = new File(dir != null ? dir : getFilesDir(), "ad_stats.csv");
+        if (!file.exists()) {
+            Toast.makeText(this, "Todavía no hay estadísticas guardadas", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType("text/csv");
+        send.putExtra(Intent.EXTRA_STREAM, Uri.parse("content://com.skipadstube.app.fileprovider/ad_stats.csv"));
+        send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(send, "Compartir ad_stats.csv"));
     }
 
     private Switch toggle(String label, String key, boolean fallback) {

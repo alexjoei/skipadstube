@@ -4,16 +4,21 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function run({ skipAds = true } = {}) {
+function run({ skipAds = true, brandText = null } = {}) {
   let poll;
   const messages = [];
   let adPresent = true;
   const adTextEl = { textContent: 'Anuncio - Ejemplo' };
   const button = { textContent: 'Skip', getAttribute: () => null, getClientRects: () => [{}],
     getBoundingClientRect: () => ({ left: 10, top: 20, width: 80, height: 40 }), contains: el => el === button };
+  const brandEl = { textContent: brandText, getAttribute: () => null };
   const root = {
     classList: { contains: () => adPresent },
-    querySelectorAll: () => (adPresent ? [button] : []),
+    querySelectorAll: selector => {
+      if (!adPresent) return [];
+      if (selector === '*') return brandText ? [button, brandEl] : [button];
+      return [button];
+    },
     querySelector: selector => (adPresent && selector === '.ytp-ad-text' ? adTextEl : null)
   };
   const media = { muted: false };
@@ -31,30 +36,39 @@ function run({ skipAds = true } = {}) {
   return { messages, setAdPresent: value => { adPresent = value; }, poll };
 }
 
-test('a finished ad is reported once with duration, skip flag and label', async () => {
+function lastStat(app) {
+  const stats = app.messages.filter(m => m.type === 'skipadstube-ad-stat');
+  return stats.length ? stats[stats.length - 1].row : null;
+}
+
+test('a finished ad is reported once with duration, skip flag, label and declared seconds', async () => {
   const app = run();
   await new Promise(setImmediate);
   app.messages.length = 0;
   app.setAdPresent(false);
   app.poll();
   await new Promise(setImmediate);
-  const stats = app.messages.filter(m => m.type === 'skipadstube-ad-stat');
-  assert.equal(stats.length, 1);
-  assert.equal(stats[0].row.skipped, true);
-  assert.equal(stats[0].row.label, 'Anuncio - Ejemplo');
-  assert.ok(stats[0].row.durationMs >= 0);
+  const row = lastStat(app);
+  assert.ok(row);
+  assert.equal(row.skipped, true);
+  assert.equal(row.skippable, true);
+  assert.equal(row.label, 'Anuncio - Ejemplo');
+  assert.ok(row.durationMs >= 0);
+  assert.equal(row.declaredSeconds, null);
+  assert.ok(row.timeToSkipMs >= 0);
+  assert.equal(row.podPosition, 1);
 });
 
-test('an ad that is never clicked is reported with skipped false', async () => {
+test('an ad that is never clicked is reported as skippable but not skipped', async () => {
   const app = run({ skipAds: false });
   await new Promise(setImmediate);
   app.messages.length = 0;
   app.setAdPresent(false);
   app.poll();
   await new Promise(setImmediate);
-  const stats = app.messages.filter(m => m.type === 'skipadstube-ad-stat');
-  assert.equal(stats.length, 1);
-  assert.equal(stats[0].row.skipped, false);
+  const row = lastStat(app);
+  assert.equal(row.skipped, false);
+  assert.equal(row.skippable, true);
 });
 
 test('an ad that never ends never reports a row', async () => {
@@ -64,4 +78,31 @@ test('an ad that never ends never reports a row', async () => {
   app.poll();
   await new Promise(setImmediate);
   assert.equal(app.messages.filter(m => m.type === 'skipadstube-ad-stat').length, 0);
+});
+
+test('a non-generic text in the player is captured as advertiserGuess', async () => {
+  const app = run({ brandText: 'Visita ejemplo.com' });
+  await new Promise(setImmediate);
+  app.messages.length = 0;
+  app.setAdPresent(false);
+  app.poll();
+  await new Promise(setImmediate);
+  assert.equal(lastStat(app).advertiserGuess, 'Visita ejemplo.com');
+});
+
+test('a second ad right after the first shares the pod and increments position', async () => {
+  const app = run();
+  await new Promise(setImmediate);
+  app.messages.length = 0;
+  app.setAdPresent(false);
+  app.poll();
+  await new Promise(setImmediate);
+  assert.equal(lastStat(app).podPosition, 1);
+  app.setAdPresent(true);
+  app.poll();
+  await new Promise(setImmediate);
+  app.setAdPresent(false);
+  app.poll();
+  await new Promise(setImmediate);
+  assert.equal(lastStat(app).podPosition, 2);
 });

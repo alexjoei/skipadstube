@@ -1,11 +1,11 @@
-# skipadstube MVP 0.2.9 (Android)
+# skipadstube MVP 0.2.10 (Android)
 
 Aplicación local que observa exclusivamente la interfaz de la app oficial de YouTube,
 silencia el audio al detectar un anuncio y pulsa el botón de omitir cuando aparece.
 
 ## Estado
 
-- MVP 0.2.9, con el nombre e identificador skipadstube.
+- MVP 0.2.10, con el nombre e identificador skipadstube.
 - Sin permiso de Internet ni analítica. Desde la 0.2.9 guarda localmente, en `ad_stats.csv`
   (ver [Estadísticas de anuncios](#estadísticas-de-anuncios)), un registro de cada anuncio para poder
   analizarlo más adelante; ese archivo nunca sale del dispositivo.
@@ -48,21 +48,42 @@ no cada sondeo) como una fila CSV en `ad_stats.csv`, dentro del almacenamiento e
 la app (`getExternalFilesDir(null)`, con `getFilesDir()` como alternativa si no está disponible).
 No requiere ningún permiso adicional ni usa Internet.
 
-Columnas: `start,end,duration_ms,skipped,ad_label`
+Columnas: `start,end,duration_ms,declared_seconds,time_to_skip_ms,skippable,skipped,pod_position,ad_label,advertiser_guess`
 
-- `start` / `end`: marca de tiempo local ISO 8601 de la detección y el fin de la señal de anuncio.
-- `duration_ms`: duración observada del anuncio, en milisegundos.
+- `start` / `end` / `duration_ms`: marca de tiempo ISO 8601 de inicio y fin, y duración observada
+  en milisegundos.
+- `declared_seconds`: mejor esfuerzo — longitud total del anuncio deducida del propio contador en
+  pantalla (p. ej. el «15» de «Anuncio · 15»), para saber cuánto habría durado si no se hubiera
+  omitido. Vacío si no hay contador parseable.
+- `time_to_skip_ms`: tiempo desde que se detecta el anuncio hasta que el botón de omitir aparece
+  disponible por primera vez. Vacío si nunca apareció.
+- `skippable`: `true` si el botón de omitir llegó a aparecer en algún momento, con independencia de
+  si lo pulsamos o no (permite distinguir anuncios no saltables de saltables que no se alcanzaron a
+  pulsar).
 - `skipped`: `true` si nuestro propio clic de «Omitir» se disparó durante ese anuncio.
+- `pod_position`: posición de este anuncio dentro de una tanda de anuncios seguidos (1, 2, 3…);
+  vuelve a 1 si pasan más de 3 segundos entre el fin de un anuncio y el inicio del siguiente. Con
+  esto se puede saber si en una pausa salió un solo anuncio o varios encadenados.
 - `ad_label`: el primer texto o descripción no vacío de los nodos ya clasificados como señal de
-  anuncio por `DetectionRules`. En dispositivos donde YouTube expone el anunciante (p. ej. «Repsol»)
-  en ese nodo, quedará aquí; en la mayoría de pantallas observadas solo contiene el contador del
-  anuncio («Anuncio · 15»). No hemos verificado en un dispositivo real que el nombre del anunciante
-  aparezca ahí: considera esta columna como mejor esfuerzo hasta confirmarlo.
+  anuncio por `DetectionRules` (en la mayoría de pantallas observadas, solo el contador «Anuncio ·
+  15»).
+- `advertiser_guess`: **experimental**, añadido porque `ad_label` no estaba devolviendo nada en
+  pruebas reales. Recorre todos los nodos visibles del reproductor mientras el anuncio está activo
+  (solo mientras está activo: nunca mira el vídeo normal) y se queda con el primer texto que no
+  coincide con controles conocidos del reproductor (silenciar, pantalla completa, etc.) ni con el
+  contador. No hemos confirmado que YouTube exponga el nombre del anunciante por accesibilidad en
+  ningún punto del árbol; esta columna puede seguir saliendo vacía, o capturar texto irrelevante. Si
+  localizas el nodo correcto inspeccionando un volcado de accesibilidad real durante un anuncio
+  (`uiautomator dump` con el anuncio en pantalla), compártelo para afinar `DetectionRules`.
 
-Para extraerlo: `adb pull /sdcard/Android/data/com.skipadstube.app/files/ad_stats.csv` (o el
-gestor de archivos del propio dispositivo) y analizarlo con cualquier hoja de cálculo o script
-(frecuencia por hora, duración media, proporción de anuncios omitidos, etc.). El archivo crece de
-forma indefinida; de momento no hay rotación ni límite de tamaño.
+Para extraerlo hay dos vías:
+1. **Desde la propia app:** botón **«Compartir estadísticas de anuncios (CSV)»** en la pantalla
+   principal, que abre el selector de Android para enviarlo por email, guardarlo en Drive, etc.
+   (usa un `ContentProvider` propio; no requiere permisos de almacenamiento).
+2. **Por USB:** `adb pull /sdcard/Android/data/com.skipadstube.app/files/ad_stats.csv` (el gestor de
+   archivos del sistema no puede navegar directamente dentro de `Android/data/` en Android 11+).
+
+El archivo crece de forma indefinida; de momento no hay rotación ni límite de tamaño.
 
 ## Camino hacia una versión pública
 

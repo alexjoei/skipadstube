@@ -19,6 +19,25 @@ final class DetectionRules {
         "saltar anuncio", "omitir anuncio", "omitir anuncios", "skip ad", "skip ads",
         "uberspringen", "annonce ignorer", "ignorer l annonce", "salta annuncio"
     };
+    // Common player-chrome labels that are visible during an ad but are not the ad itself.
+    // Filters candidates for the best-effort advertiser_guess column; necessarily incomplete.
+    private static final Set<String> PLAYER_CHROME_LABELS = new HashSet<>(Arrays.asList(
+        "mas", "more", "configuracion", "settings", "pantalla completa", "full screen", "fullscreen",
+        "subtitulos", "subtitles", "captions", "reproducir", "play", "pausa", "pause",
+        "silenciar", "mute", "activar sonido", "unmute", "siguiente", "next", "anterior", "previous",
+        "cerrar", "close", "suscribirse", "subscribe", "youtube", "compartir", "share"
+    ));
+
+    /** True when the text/description is too generic to be a useful advertiser_guess candidate. */
+    static boolean isAdNoise(CharSequence value) {
+        if (value == null) return true;
+        String normalized = normalize(value.toString());
+        if (normalized.length() < 2) return true;
+        if (normalized.matches("\\d+(?::\\d{2})?")) return true;
+        if (isSkipLabel(value) || isAdLabel(value)) return true;
+        return PLAYER_CHROME_LABELS.contains(normalized);
+    }
+
     static boolean isSkip(String id, CharSequence text, CharSequence description) {
         return hasIdSuffix(id, SKIP_ID_SUFFIXES) || isSkipLabel(text) || isSkipLabel(description);
     }

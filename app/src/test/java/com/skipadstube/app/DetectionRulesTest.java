@@ -51,4 +51,21 @@ public class DetectionRulesTest {
     @Test public void similarResourceIdIsNotSkipButton() {
         assertFalse(DetectionRules.isSkip("com.google.android.youtube:id/not_skip_ad_button", null, null));
     }
+    @Test public void adNoiseRejectsNullEmptyAndShortValues() {
+        assertTrue(DetectionRules.isAdNoise(null));
+        assertTrue(DetectionRules.isAdNoise(""));
+        assertTrue(DetectionRules.isAdNoise("x"));
+    }
+    @Test public void adNoiseRejectsCountdownsSkipLabelsAndPlayerChrome() {
+        assertTrue(DetectionRules.isAdNoise("15"));
+        assertTrue(DetectionRules.isAdNoise("0:15"));
+        assertTrue(DetectionRules.isAdNoise("Omitir anuncio"));
+        assertTrue(DetectionRules.isAdNoise("Anuncio · 15"));
+        assertTrue(DetectionRules.isAdNoise("Configuración"));
+        assertTrue(DetectionRules.isAdNoise("Pantalla completa"));
+    }
+    @Test public void adNoiseAcceptsAnythingElseAsACandidate() {
+        assertFalse(DetectionRules.isAdNoise("Visita ejemplo.com"));
+        assertFalse(DetectionRules.isAdNoise("MarcaDeEjemplo"));
+    }
 }

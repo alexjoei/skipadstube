@@ -27,13 +27,19 @@ setInterval(updateStatus, 1000);
 
 document.getElementById('downloadStats').addEventListener('click', async () => {
   const { adStats = [] } = await chrome.storage.local.get({ adStats: [] });
-  const header = 'start,end,duration_ms,skipped,ad_label';
+  const header = 'start,end,duration_ms,declared_seconds,time_to_skip_ms,skippable,skipped,pod_position,ad_label,advertiser_guess';
+  const csvText = value => value ? `"${String(value).replace(/"/g, '""')}"` : '';
   const rows = adStats.map(row => [
     new Date(row.start).toISOString(),
     new Date(row.end).toISOString(),
     row.durationMs,
-    row.skipped,
-    row.label ? `"${String(row.label).replace(/"/g, '""')}"` : ''
+    row.declaredSeconds ?? '',
+    row.timeToSkipMs ?? '',
+    Boolean(row.skippable),
+    Boolean(row.skipped),
+    row.podPosition ?? '',
+    csvText(row.label),
+    csvText(row.advertiserGuess)
   ].join(','));
   const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);

@@ -2,6 +2,47 @@
 
 ## Unreleased  
 
+### Android 0.2.10 / Desktop 0.1.10 — 2026-10-03
+
+- Add an in-app, easy-access way to get `ad_stats.csv` off the device: a "Compartir
+  estadísticas de anuncios (CSV)" button in `MainActivity` launches `Intent.ACTION_SEND`
+  through a new minimal `AdStatsFileProvider` (a hand-rolled `ContentProvider`, not the
+  androidx FileProvider, to avoid adding a new Gradle dependency this build environment may
+  not be able to download). Shows a toast instead of a broken share sheet when no stats
+  have been recorded yet.
+- Expand `ad_stats.csv` / the desktop CSV export with five new columns, same schema on both
+  platforms: `declared_seconds` (best-effort full ad length parsed from the existing ad
+  countdown/label, so "how long would this have lasted if we hadn't skipped it" is
+  answerable), `time_to_skip_ms` (time from ad start to the skip control first becoming
+  available; empty if it never did), `skippable` (whether a skip control ever appeared,
+  independent of whether we actually clicked it — separates non-skippable ads from skippable
+  ones we didn't reach in time), and `pod_position` (1-based position within a back-to-back
+  run of ads — resets to 1 after a gap of more than 3s since the previous ad ended — answers
+  "did only one ad play, or several in a row").
+- Add `advertiser_guess`: an experimental, broader text scan of the whole player while an ad
+  is confirmed active (gated on the existing ad signal, so it never touches an ordinary
+  video's title or controls), filtering out known player-chrome labels and the countdown
+  text. Added because `ad_label` alone was coming back empty in the user's real-world testing.
+  Still **not confirmed to ever surface the advertiser's name** — may keep coming back empty,
+  or pick up unrelated visible text. If it ever does surface something useful (or someone
+  finds the right accessibility/DOM node via a real-ad inspection/dump), report it back so
+  `DetectionRules`/the selector list can be tightened.
+- New `AdStatsRecorder.parseDeclaredSeconds` (Android, pure) / `parseDeclaredSeconds` (desktop)
+  parse "mm:ss" and plain-seconds patterns out of the ad label.
+- Android: 12 tests in `AdStatsRecorderTest` (was 8) and 3 new `DetectionRulesTest.isAdNoise`
+  tests. All 40 unit tests pass. Generated `dist/skipadstube-0.2.10.apk` (version code 12);
+  package metadata and debug signature verified with aapt/apksigner.
+- Desktop: 5 tests in `content-stats.test.cjs` (was 3) covering `skippable`, `pod_position`
+  and `advertiser_guess`. All 16 desktop tests pass. Packaged
+  `dist/skipadstube-desktop-0.1.10.zip`.
+- Fixed two more stale hardcoded version strings found while touching this code: Android's
+  diagnostics screen said 0.2.9 while shipping 0.2.10-era behavior, and the desktop status
+  reply said 0.1.9 for the same reason.
+- Not yet exercised on a real device/browser for this change: the share button, the new CSV
+  columns, and `advertiser_guess` are verified only by the unit tests above.
+- APK SHA-256: `f50a4e6c34521413693cc01a53e01dfb47ef8a2292108589f3f7a0a5eb9a5028`.
+- Desktop zip SHA-256: `7144126d22134913f9d1976dfebfc86c4935a111884bc420a6bcdfb68856d71`.
+
 ### Android 0.2.9 / Desktop 0.1.9 — 2026-10-03
 
 - Add local ad statistics: `YouTubeAutomationService` now records each ad occurrence (start, end,

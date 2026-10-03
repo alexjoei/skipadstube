@@ -10,7 +10,7 @@ public class AdStatsRecorderTest {
         FakeClock clock = new FakeClock();
         FakeSink sink = new FakeSink();
         AdStatsRecorder recorder = new AdStatsRecorder(clock, sink);
-        for (int i = 0; i < 5; i++) recorder.update(false, null, false);
+        for (int i = 0; i < 5; i++) recorder.update(false, null, false, false, null);
         assertTrue(sink.rows.isEmpty());
     }
 
@@ -19,54 +19,89 @@ public class AdStatsRecorderTest {
         FakeSink sink = new FakeSink();
         AdStatsRecorder recorder = new AdStatsRecorder(clock, sink);
         clock.value = 1_000L;
-        recorder.update(true, "Anuncio - 15", false);
+        recorder.update(true, "Anuncio - 15", false, false, null);
         clock.value = 1_500L;
-        recorder.update(true, null, false);
+        recorder.update(true, null, false, false, null);
         clock.value = 4_200L;
-        recorder.update(false, null, false);
+        recorder.update(false, null, false, false, null);
         assertEquals(1, sink.rows.size());
-        assertTrue(sink.rows.get(0).endsWith(",3200,false,\"Anuncio - 15\""));
+        assertTrue(sink.rows.get(0).startsWith(iso(1_000L) + "," + iso(4_200L) + ",3200,15,"));
     }
 
     @Test public void skipClickDuringAdIsRecorded() {
         FakeClock clock = new FakeClock();
         FakeSink sink = new FakeSink();
         AdStatsRecorder recorder = new AdStatsRecorder(clock, sink);
-        recorder.update(true, "Anuncio", false);
-        recorder.update(true, null, true);
+        recorder.update(true, "Anuncio", false, true, null);
+        recorder.update(true, null, true, true, null);
         clock.value = 800L;
-        recorder.update(false, null, false);
-        assertTrue(sink.rows.get(0).contains(",800,true,"));
+        recorder.update(false, null, false, false, null);
+        assertTrue(sink.rows.get(0).contains(",800,,0,true,true,1,"));
     }
 
-    @Test public void consecutiveAdsProduceSeparateRows() {
+    @Test public void skippableWithoutAClickIsRecordedAsNotSkipped() {
         FakeClock clock = new FakeClock();
         FakeSink sink = new FakeSink();
         AdStatsRecorder recorder = new AdStatsRecorder(clock, sink);
-        recorder.update(true, null, false);
-        clock.value = 1_000L; recorder.update(false, null, false);
-        clock.value = 5_000L; recorder.update(true, null, false);
-        clock.value = 5_300L; recorder.update(false, null, false);
+        recorder.update(true, null, false, true, null);
+        recorder.update(false, null, false, false, null);
+        assertTrue(sink.rows.get(0).contains(",true,false,1,"));
+    }
+
+    @Test public void nonSkippableAdHasEmptyTimeToSkipAndFalseSkippable() {
+        FakeClock clock = new FakeClock();
+        FakeSink sink = new FakeSink();
+        AdStatsRecorder recorder = new AdStatsRecorder(clock, sink);
+        recorder.update(true, null, false, false, null);
+        recorder.update(false, null, false, false, null);
+        String row = sink.rows.get(0);
+        assertTrue(row.contains(",false,false,1,"));
+    }
+
+    @Test public void timeToSkipIsMeasuredFromAdStartToFirstAvailability() {
+        FakeClock clock = new FakeClock();
+        FakeSink sink = new FakeSink();
+        AdStatsRecorder recorder = new AdStatsRecorder(clock, sink);
+        clock.value = 0L; recorder.update(true, null, false, false, null);
+        clock.value = 5_000L; recorder.update(true, null, false, true, null);
+        clock.value = 9_000L; recorder.update(true, null, false, true, null);
+        clock.value = 12_000L; recorder.update(false, null, false, false, null);
+        assertTrue(sink.rows.get(0).contains(",12000,,5000,true,"));
+    }
+
+    @Test public void consecutiveAdsWithinGapShareAPodAndIncrementPosition() {
+        FakeClock clock = new FakeClock();
+        FakeSink sink = new FakeSink();
+        AdStatsRecorder recorder = new AdStatsRecorder(clock, sink);
+        recorder.update(true, null, false, false, null);
+        clock.value = 1_000L; recorder.update(false, null, false, false, null);
+        clock.value = 3_500L; recorder.update(true, null, false, false, null);
+        clock.value = 3_800L; recorder.update(false, null, false, false, null);
         assertEquals(2, sink.rows.size());
+        assertTrue(sink.rows.get(0).endsWith(",1,,"));
+        assertTrue(sink.rows.get(1).endsWith(",2,,"));
     }
 
-    @Test public void firstLabelSeenDuringAnAdWins() {
+    @Test public void aLongGapStartsANewPod() {
         FakeClock clock = new FakeClock();
         FakeSink sink = new FakeSink();
         AdStatsRecorder recorder = new AdStatsRecorder(clock, sink);
-        recorder.update(true, "Primero", false);
-        recorder.update(true, "Segundo", false);
-        recorder.update(false, null, false);
-        assertTrue(sink.rows.get(0).endsWith("\"Primero\""));
+        recorder.update(true, null, false, false, null);
+        clock.value = 1_000L; recorder.update(false, null, false, false, null);
+        clock.value = 20_000L; recorder.update(true, null, false, false, null);
+        clock.value = 20_300L; recorder.update(false, null, false, false, null);
+        assertTrue(sink.rows.get(1).endsWith(",1,,"));
     }
 
-    @Test public void missingLabelLeavesTheColumnEmpty() {
+    @Test public void firstLabelAndGuessSeenDuringAnAdWin() {
         FakeClock clock = new FakeClock();
         FakeSink sink = new FakeSink();
         AdStatsRecorder recorder = new AdStatsRecorder(clock, sink);
-        recorder.update(true, null, false);
-        recorder.update(false, null, false);
-        assertTrue(sink.rows.get(0).endsWith(",false,"));
+        recorder.update(true, "Primero", false, false, "MarcaX");
+        recorder.update(true, "Segundo", false, false, "MarcaY");
+        recorder.update(false, null, false, false, null);
+        String row = sink.rows.get(0);
+        assertTrue(row.endsWith("\"Primero\",\"MarcaX\""));
     }
 
     @Test public void labelWithQuotesIsEscapedForCsv() {
@@ -74,18 +109,32 @@ public class AdStatsRecorderTest {
         FakeSink sink = new FakeSink();
         AdStatsRecorder recorder = new AdStatsRecorder(clock, sink);
         String raw = "Anuncio \"premium\"";
-        recorder.update(true, raw, false);
-        recorder.update(false, null, false);
+        recorder.update(true, raw, false, false, null);
+        recorder.update(false, null, false, false, null);
         String expected = "\"" + raw.replace("\"", "\"\"") + "\"";
-        assertTrue(sink.rows.get(0).endsWith("," + expected));
+        assertTrue(sink.rows.get(0).contains("," + expected + ","));
     }
 
-    @Test public void stayingMidAdNeverAppendsUntilItEnds() {
+    @Test public void missingLabelAndGuessLeaveThoseColumnsEmpty() {
         FakeClock clock = new FakeClock();
         FakeSink sink = new FakeSink();
         AdStatsRecorder recorder = new AdStatsRecorder(clock, sink);
-        for (int i = 0; i < 20; i++) recorder.update(true, null, false);
-        assertTrue(sink.rows.isEmpty());
+        recorder.update(true, null, false, false, null);
+        recorder.update(false, null, false, false, null);
+        assertTrue(sink.rows.get(0).endsWith(",,"));
+    }
+
+    @Test public void parseDeclaredSecondsHandlesMinutesAndPlainSeconds() {
+        assertEquals(Integer.valueOf(15), AdStatsRecorder.parseDeclaredSeconds("Anuncio - 15"));
+        assertEquals(Integer.valueOf(75), AdStatsRecorder.parseDeclaredSeconds("Ad - 1:15"));
+        assertNull(AdStatsRecorder.parseDeclaredSeconds("Anuncio"));
+        assertNull(AdStatsRecorder.parseDeclaredSeconds(null));
+    }
+
+    private static String iso(long epochMillis) {
+        java.text.SimpleDateFormat format =
+            new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", java.util.Locale.ROOT);
+        return format.format(new java.util.Date(epochMillis));
     }
 
     private static final class FakeClock implements AdStatsRecorder.Clock {

@@ -82,7 +82,7 @@ public final class YouTubeAutomationService extends AccessibilityService {
         if (root == null) {
             RuntimeStatus.scan = "No se puede leer la ventana activa";
             finish();
-            if (stats != null) stats.update(false, null, false);
+            if (stats != null) stats.update(false, null, false, false, null);
             return;
         }
         ScanResult result = new ScanResult();
@@ -90,7 +90,7 @@ public final class YouTubeAutomationService extends AccessibilityService {
             if (root.getPackageName() == null || !YOUTUBE.contentEquals(root.getPackageName())) {
                 RuntimeStatus.scan = "Abre YouTube para comprobar los anuncios";
                 finish();
-                if (stats != null) stats.update(false, null, false);
+                if (stats != null) stats.update(false, null, false, false, null);
                 return;
             }
             java.util.List<AccessibilityNodeInfo> players = root.findAccessibilityNodeInfosByViewId(
@@ -116,14 +116,14 @@ public final class YouTubeAutomationService extends AccessibilityService {
                     + "; canal silenciado: " + (audio.isStreamMute(AudioManager.STREAM_MUSIC) ? "sí" : "no")
                     + (settings.getBoolean("mute_ads", true) ? "; silencio activado" : "; silencio desactivado");
             }
+            boolean skipAvailable = result.skipNode != null;
             boolean clicked = false;
-            if (result.skipNode != null && settings.getBoolean("skip_ads", true)
-                    && now - lastClick >= 1000) {
+            if (skipAvailable && settings.getBoolean("skip_ads", true) && now - lastClick >= 1000) {
                 click(result.skipNode);
                 lastClick = now;
                 clicked = true;
             }
-            if (stats != null) stats.update(ad, result.adLabel, clicked);
+            if (stats != null) stats.update(ad, result.adLabel, clicked, skipAvailable, result.advertiserGuess);
         } finally {
             root.recycle();
             if (result.skipNode != null) result.skipNode.recycle();
@@ -142,6 +142,12 @@ public final class YouTubeAutomationService extends AccessibilityService {
                     CharSequence label = text != null && text.length() > 0 ? text : description;
                     if (label != null && label.length() > 0) result.adLabel = label.toString();
                 }
+            }
+            // Best-effort advertiser text: only used by the caller once the whole scan confirms
+            // an ad is actually playing, so an ordinary video's title/controls are never kept.
+            if (result.advertiserGuess == null) {
+                CharSequence candidate = text != null && text.length() > 0 ? text : description;
+                if (!DetectionRules.isAdNoise(candidate)) result.advertiserGuess = candidate.toString();
             }
             if (result.skipNode == null && node.isEnabled()
                     && DetectionRules.isSkip(id, text, description)) {
@@ -178,9 +184,15 @@ public final class YouTubeAutomationService extends AccessibilityService {
         RuntimeStatus.connected = false;
         handler.removeCallbacksAndMessages(null);
         if (settings != null) settings.unregisterOnSharedPreferenceChangeListener(settingsChanged);
-        if (stats != null) stats.update(false, null, false);
+        if (stats != null) stats.update(false, null, false, false, null);
         finish();
         super.onDestroy();
     }
-    private static final class ScanResult { boolean adDetected; String adLabel; AccessibilityNodeInfo skipNode; int visited; }
+    private static final class ScanResult {
+        boolean adDetected;
+        String adLabel;
+        String advertiserGuess;
+        AccessibilityNodeInfo skipNode;
+        int visited;
+    }
 }

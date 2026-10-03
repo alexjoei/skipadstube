@@ -1,4 +1,4 @@
-# skipadstube Desktop 0.1.9
+# skipadstube Desktop 0.1.10
 
 La versión 0.1.5 añade acceso explícito a `https://www.youtube.com/*` para comprobar la URL de la pestaña. Sin ese permiso, Chrome puede ocultar la URL y la versión anterior mostraba incorrectamente «Activa la pestaña de YouTube».
 
@@ -24,19 +24,39 @@ No envía información fuera del navegador. El acceso de sitio se limita a `www.
 
 ## Estadísticas de anuncios
 
-Desde la 0.1.9, cada anuncio (de inicio a fin) se guarda en `chrome.storage.local` con
-inicio, fin, duración, si nuestro clic de omitir se confirmó y la primera etiqueta de
-texto ya visible que el propio código usaba para detectar el anuncio (normalmente el
-contador «Anuncio · 15»; no confirmado que YouTube exponga ahí el nombre del anunciante).
-No sale del navegador y no usa ningún permiso nuevo. Para analizarlo, abre el popup de la
-extensión y pulsa **Descargar estadísticas (CSV)**; descarga `skipadstube-ad-stats.csv`
-con las mismas columnas que usa la app Android (`start,end,duration_ms,skipped,ad_label`).
-Se conservan como máximo las 5000 filas más recientes.
+Cada anuncio (de inicio a fin) se guarda en `chrome.storage.local`. No sale del navegador
+y no usa ningún permiso nuevo. Columnas (las mismas que usa la app Android):
+
+- `start` / `end` / `duration_ms`: cuándo empezó, cuándo terminó y cuánto duró en total.
+- `declared_seconds`: longitud del anuncio deducida del propio contador en pantalla (p. ej.
+  «15» de «Anuncio · 15»), para saber cuánto habría durado si no lo hubiéramos omitido.
+  Mejor esfuerzo: vacío si no hay contador visible.
+- `time_to_skip_ms`: tiempo desde que empieza el anuncio hasta que aparece el botón de
+  omitir. Vacío si nunca apareció.
+- `skippable`: si el botón de omitir llegó a aparecer, independientemente de si lo pulsamos.
+- `skipped`: si nuestro propio clic de omitir se confirmó enviado.
+- `pod_position`: posición del anuncio dentro de una tanda de anuncios seguidos (1, 2, 3…;
+  vuelve a 1 si pasan más de 3 segundos desde que terminó el anterior) — para saber si salen
+  anuncios sueltos o varios encadenados.
+- `ad_label`: el mismo texto/contador ya usado para detectar el anuncio (normalmente «Anuncio
+  · 15»).
+- `advertiser_guess`: **experimental**. Recorre todo el texto visible del reproductor
+  mientras el anuncio está activo, descartando controles conocidos (silenciar, pantalla
+  completa, etc.) y el propio contador, buscando cualquier otra cosa. En las pruebas
+  realizadas no ha aparecido ningún nombre de anunciante — puede que YouTube no lo expone
+  por accesibilidad/DOM en absoluto, o que la señal esté en un elemento que esta heurística
+  todavía no reconoce. Si alguna vez detectas un anunciante en esta columna o, al revés,
+  encuentras el elemento correcto inspeccionando la página con las herramientas de
+  desarrollador durante un anuncio real, avísanos para afinar la detección.
+
+Para analizarlo, abre el popup de la extensión y pulsa **Descargar estadísticas (CSV)**;
+descarga `skipadstube-ad-stats.csv` con las columnas anteriores. Se conservan como máximo
+las 5000 filas más recientes.
 
 ## Actualizar y comprobar
 
 1. Si instalaste el ZIP antiguo, carga la carpeta `desktop` de este repositorio y desactiva la copia antigua.
-2. En `chrome://extensions` o `edge://extensions`, pulsa **Recargar** en skipadstube y comprueba la versión **0.1.9**.
+2. En `chrome://extensions` o `edge://extensions`, pulsa **Recargar** en skipadstube y comprueba la versión **0.1.10**.
 3. Recarga también la pestaña de YouTube para que use el nuevo código.
 4. Comprueba que **Omitir automáticamente** está activado y que la extensión tiene acceso a `www.youtube.com`.
 5. Prueba un anuncio con botón de omitir: debe pulsarlo cuando esté disponible. Los anuncios sin botón se silencian, pero no se pueden omitir con esta extensión.
