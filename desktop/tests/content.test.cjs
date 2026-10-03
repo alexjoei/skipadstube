@@ -7,7 +7,7 @@ function run(skip = true, covered = false) {
   let listener, poll, requests = 0;
   const button = { textContent: 'Skip', getAttribute: () => null, getClientRects: () => [{}],
     getBoundingClientRect: () => ({ left: 10, top: 20, width: 80, height: 40 }), contains: el => el === button };
-  const root = { classList: { contains: () => true }, querySelectorAll: () => [button] };
+  const root = { classList: { contains: () => true }, querySelectorAll: () => [button], querySelector: () => null };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../content.js'), 'utf8'), {
     document: { visibilityState: 'visible', documentElement: {}, querySelector: s => s === '#movie_player' ? root : { muted: false }, elementFromPoint: () => covered ? {} : button },
     chrome: { runtime: { onMessage: { addListener: fn => { listener = fn; } }, sendMessage: async () => { requests++; return { sent: true }; } },

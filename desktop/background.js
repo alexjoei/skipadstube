@@ -3,6 +3,16 @@ const lastAttempt = new Map();
 const youtube = url => {
   try { return new URL(url).origin === 'https://www.youtube.com'; } catch { return false; }
 };
+// Caps local growth; there is no rotation beyond keeping the most recent rows.
+const MAX_AD_STATS = 5000;
+
+async function recordAdStat(row) {
+  const { adStats = [] } = await chrome.storage.local.get({ adStats: [] });
+  adStats.push(row);
+  if (adStats.length > MAX_AD_STATS) adStats.splice(0, adStats.length - MAX_AD_STATS);
+  await chrome.storage.local.set({ adStats });
+  return { stored: true };
+}
 
 async function browserClick(sender) {
   const tabId = sender.tab?.id;
@@ -44,8 +54,13 @@ async function browserClick(sender) {
   }
 }
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
-  if (message.type !== 'skipadstube-browser-click') return;
-  browserClick(sender).then(respond);
-  return true;
+  if (message.type === 'skipadstube-browser-click') {
+    browserClick(sender).then(respond);
+    return true;
+  }
+  if (message.type === 'skipadstube-ad-stat') {
+    recordAdStat(message.row).then(respond);
+    return true;
+  }
 });
 chrome.tabs.onRemoved.addListener(tabId => lastAttempt.delete(tabId));

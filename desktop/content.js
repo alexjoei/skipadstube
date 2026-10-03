@@ -8,6 +8,9 @@
     '[id="skip-button"] button',
     'ytd-button-renderer#skip-button button'
   ];
+  // Best-effort label for ad_stats rows: reuses whatever on-screen ad text is already
+  // visible, same as the Android app. Not confirmed to ever contain the advertiser name.
+  const AD_LABEL_SELECTORS = ['.ytp-ad-text', '.ytp-ad-simple-ad-badge', '.ytp-ad-preview-text'];
 
   let settings = { ...DEFAULTS };
   let adActive = false;
@@ -17,9 +20,12 @@
   let lastClickAt = 0;
   let browserPending = false;
   let browserResult = '';
+  let adStartAt = 0;
+  let adSkipped = false;
+  let adLabel = '';
   let status = { ad: false, buttonFound: false, skipEnabled: true, clickAttempts: 0 };
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
-    if (message.type === 'skipadstube-status') respond({ ...status, version: '0.1.7', browserResult });
+    if (message.type === 'skipadstube-status') respond({ ...status, version: '0.1.9', browserResult });
     if (message.type === 'skipadstube-point') {
       const button = settings.skipAds && document.visibilityState === 'visible' && findSkipButton(player(), isAdPlaying());
       if (!button) { respond(null); return; }
@@ -81,13 +87,28 @@
     return null;
   }
 
+  function findAdLabel() {
+    const root = player();
+    if (!root || typeof root.querySelector !== 'function') return '';
+    for (const selector of AD_LABEL_SELECTORS) {
+      const element = root.querySelector(selector);
+      const text = element && element.textContent && element.textContent.trim();
+      if (text) return text;
+    }
+    return '';
+  }
+
   function beginAd(media) {
     if (!adActive) {
       adActive = true;
+      adStartAt = Date.now();
+      adSkipped = false;
+      adLabel = '';
       videoMutedBeforeAd = media ? media.muted : false;
       if (settings.softChimes) chime(true);
     }
     if (media && settings.muteAds) media.muted = true;
+    if (!adLabel) adLabel = findAdLabel();
   }
 
   function endAd(media) {
@@ -95,6 +116,9 @@
     if (media && settings.muteAds) media.muted = videoMutedBeforeAd;
     adActive = false;
     if (settings.softChimes) chime(false);
+    const row = { start: adStartAt, end: Date.now(), durationMs: Date.now() - adStartAt,
+      skipped: adSkipped, label: adLabel };
+    chrome.runtime.sendMessage({ type: 'skipadstube-ad-stat', row }).catch(() => {});
   }
 
   function tick() {
@@ -111,7 +135,7 @@
         if (!browserPending) {
           browserPending = true;
           chrome.runtime.sendMessage({ type: 'skipadstube-browser-click' }).then(result => {
-            if (result?.sent) clickAttempts++;
+            if (result?.sent) { clickAttempts++; adSkipped = true; }
             browserResult = result?.sent ? 'Clic de navegador enviado' : (result?.error || 'Sin respuesta');
           }).catch(error => { browserResult = error.message; }).finally(() => { browserPending = false; });
         }

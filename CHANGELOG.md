@@ -2,7 +2,7 @@
 
 ## Unreleased  
 
-### Android 0.2.9 — 2026-10-03
+### Android 0.2.9 / Desktop 0.1.9 — 2026-10-03
 
 - Add local ad statistics: `YouTubeAutomationService` now records each ad occurrence (start, end,
   duration, whether our skip click fired, and the first non-empty label/description already
@@ -25,6 +25,30 @@
   and apksigner. Not yet installed or exercised on a real device, so the CSV file has not been
   observed being written from an actual ad.
 - APK SHA-256: `7d5cc490efa93362222fcf49a3cc8f683b11472939ad886824930877fc419903`.
+- Fix the Android diagnostics screen showing a stale "Versión 0.2.7" string regardless of the
+  actual build (unrelated pre-existing bug, touched while adding the stats line).
+
+### Desktop 0.1.9 — 2026-10-03
+
+- Mirror the Android ad-statistics feature: `content.js` now times each ad from `beginAd` to
+  `endAd`, captures whether our own browser-input skip click was confirmed sent during that ad,
+  and a best-effort label from `.ytp-ad-text` / `.ytp-ad-simple-ad-badge` / `.ytp-ad-preview-text`
+  (same caveat as Android: not confirmed to ever carry the advertiser's name). Sends one row per
+  finished ad to the background service worker.
+- New `recordAdStat` in `background.js` appends rows to `chrome.storage.local` (key `adStats`),
+  capped at the 5000 most recent rows; no new permission, nothing leaves the browser.
+- Add a "Descargar estadísticas (CSV)" button to the popup that reads `chrome.storage.local` and
+  downloads `skipadstube-ad-stats.csv` with the same columns as the Android file
+  (`start,end,duration_ms,skipped,ad_label`), via a Blob URL — no `downloads` permission needed.
+- Fix the popup status line reporting a stale `version: '0.1.7'` regardless of the actual build
+  (unrelated pre-existing bug, touched while adding the new message type).
+- Add 5 regression tests (`content-stats.test.cjs`, plus two in `background.test.cjs`) covering a
+  finished ad's row shape, an ad that is never clicked, an ad that never ends, `recordAdStat`
+  appending, and the 5000-row cap. All 14 desktop tests pass (`node --test desktop/tests/*.test.cjs`).
+- Not yet loaded in a real Chrome/Edge profile for this change; the download button and storage
+  writes are exercised only by the new unit tests.
+- Packaged `dist/skipadstube-desktop-0.1.9.zip`.
+- Desktop zip SHA-256: `49600f70efaa2eaa9426c6b55f6d793506decb0a59738890caa26e28a672e7a5`.
 
 ### Android 0.2.8 / Desktop 0.1.8 — 2026-09-16
 

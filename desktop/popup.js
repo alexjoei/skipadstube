@@ -24,3 +24,22 @@ async function updateStatus() {
 }
 updateStatus();
 setInterval(updateStatus, 1000);
+
+document.getElementById('downloadStats').addEventListener('click', async () => {
+  const { adStats = [] } = await chrome.storage.local.get({ adStats: [] });
+  const header = 'start,end,duration_ms,skipped,ad_label';
+  const rows = adStats.map(row => [
+    new Date(row.start).toISOString(),
+    new Date(row.end).toISOString(),
+    row.durationMs,
+    row.skipped,
+    row.label ? `"${String(row.label).replace(/"/g, '""')}"` : ''
+  ].join(','));
+  const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'skipadstube-ad-stats.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+});

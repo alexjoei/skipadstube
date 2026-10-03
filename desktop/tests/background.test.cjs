@@ -58,3 +58,31 @@ test('manifest grants URL visibility only for YouTube', () => {
   assert.deepEqual(manifest.host_permissions, ['https://www.youtube.com/*']);
   assert.equal(manifest.permissions.includes('tabs'), false);
 });
+
+function setupStats(initial = []) {
+  const stored = { adStats: initial };
+  const context = vm.createContext({ chrome: {
+    runtime: { onMessage: { addListener() {} } },
+    tabs: { onRemoved: { addListener() {} } },
+    storage: { local: {
+      get: async defaults => ({ adStats: stored.adStats ?? defaults.adStats }),
+      set: async values => { stored.adStats = values.adStats; }
+    } }
+  } });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../background.js'), 'utf8'), context);
+  return { context, stored, record: row => { context.row = row; return vm.runInContext('recordAdStat(row)', context); } };
+}
+test('recordAdStat appends a row to local storage', async () => {
+  const { stored, record } = setupStats();
+  const row = { start: 1, end: 2, durationMs: 1, skipped: true, label: 'x' };
+  assert.equal((await record(row)).stored, true);
+  assert.deepEqual(stored.adStats, [row]);
+});
+test('recordAdStat keeps only the most recent rows once the cap is reached', async () => {
+  const existing = Array.from({ length: 5000 }, (_, i) => ({ start: i }));
+  const { stored, record } = setupStats(existing);
+  await record({ start: 5000 });
+  assert.equal(stored.adStats.length, 5000);
+  assert.equal(stored.adStats[0].start, 1);
+  assert.equal(stored.adStats.at(-1).start, 5000);
+});
