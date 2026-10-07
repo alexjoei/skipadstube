@@ -1,4 +1,4 @@
-const DEFAULTS = { muteAds: true, skipAds: true, softChimes: true };
+const DEFAULTS = { muteAds: true, skipAds: true, softChimes: true, levelVolume: true };
 chrome.storage.sync.get(DEFAULTS, settings => {
   for (const key of Object.keys(DEFAULTS)) {
     const input = document.getElementById(key);

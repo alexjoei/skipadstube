@@ -1,4 +1,4 @@
-# skipadstube Desktop 1.0.0
+# skipadstube Desktop 1.1.0
 
 La versión 0.1.5 añade acceso explícito a `https://www.youtube.com/*` para comprobar la URL de la pestaña. Sin ese permiso, Chrome puede ocultar la URL y la versión anterior mostraba incorrectamente «Activa la pestaña de YouTube».
 
@@ -61,7 +61,7 @@ las 5000 filas más recientes.
 ## Actualizar y comprobar
 
 1. Si instalaste el ZIP antiguo, carga la carpeta `desktop` de este repositorio y desactiva la copia antigua.
-2. En `chrome://extensions` o `edge://extensions`, pulsa **Recargar** en skipadstube y comprueba la versión **1.0.0**.
+2. En `chrome://extensions` o `edge://extensions`, pulsa **Recargar** en skipadstube y comprueba la versión **1.1.0**.
 3. Recarga también la pestaña de YouTube para que use el nuevo código.
 4. Comprueba que **Omitir automáticamente** está activado y que la extensión tiene acceso a `www.youtube.com`.
 5. Prueba un anuncio con botón de omitir: debe pulsarlo cuando esté disponible. Los anuncios sin botón se silencian, pero no se pueden omitir con esta extensión.
@@ -69,3 +69,10 @@ las 5000 filas más recientes.
 Pruebas de regresión: `node --test desktop/tests/*.test.cjs` desde la raíz del repositorio.
 
 Si no omite el anuncio, abre el popup mientras el botón esté visible. El estado indica si detecta el anuncio, encuentra el botón y ha intentado pulsarlo. Los intentos no confirman que YouTube haya omitido el anuncio. El contador pertenece a la pestaña y se reinicia al recargarla; no se guarda ni se envía fuera del navegador.
+
+## Nivelar volumen (iVoox)
+
+`leveler.js` aplica un compresor + limitador de Web Audio a los `<audio>`/`<video>` de ivoox.com
+(casilla "Nivelar volumen (iVoox)" del popup). Se salta los elementos de origen cruzado sin CORS,
+porque conectarlos los dejaría en silencio; por eso puede no actuar en todos los reproductores.
+Sin comprobar todavía en el navegador real.

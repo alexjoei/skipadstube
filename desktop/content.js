@@ -44,7 +44,7 @@
   let contentMsSnapshot = 0;
   let status = { ad: false, buttonFound: false, skipEnabled: true, clickAttempts: 0 };
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
-    if (message.type === 'skipadstube-status') respond({ ...status, version: '1.0.0', browserResult });
+    if (message.type === 'skipadstube-status') respond({ ...status, version: '1.1.0', browserResult });
     if (message.type === 'skipadstube-point') {
       const button = settings.skipAds && document.visibilityState === 'visible' && findSkipButton(player(), isAdPlaying());
       if (!button) { respond(null); return; }

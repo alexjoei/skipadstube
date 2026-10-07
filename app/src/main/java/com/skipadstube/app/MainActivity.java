@@ -18,18 +18,31 @@ import android.widget.Toast;
 import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.app.AlertDialog;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public final class MainActivity extends Activity {
     private static final String PREFS = "skipadstube";
     private TextView diagnostics;
+    private TextView levelStatus;
+    private Button levelStrength;
     private final Handler refreshHandler = new Handler(Looper.getMainLooper());
     private final Runnable refresh = new Runnable() {
         @Override public void run() {
             AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
             int stream = RuntimeStatus.connected ? AudioManager.STREAM_ACCESSIBILITY : AudioManager.STREAM_MUSIC;
             setVolumeControlStream(stream);
-            diagnostics.setText("Versión 1.0.0 · Servicio " + (RuntimeStatus.connected ? "conectado" : "desconectado")
+            levelStatus.setText(RuntimeStatus.leveling + (AudioSessionFinder.hasDumpPermission(MainActivity.this) ? ""
+                : "\nFalta el permiso DUMP. Conecta el móvil por USB y ejecuta:\nadb shell pm grant " + getPackageName() + " android.permission.DUMP"));
+            diagnostics.setText("Versión 1.1.0 · Servicio " + (RuntimeStatus.connected ? "conectado" : "desconectado")
                 + "\n" + RuntimeStatus.scan + "\n" + RuntimeStatus.lastAd
                 + "\nVolumen de avisos: " + audio.getStreamVolume(stream) + "/" + audio.getStreamMaxVolume(stream)
                 + "\n" + RuntimeStatus.sound
@@ -77,6 +90,7 @@ public final class MainActivity extends Activity {
         shareStats.setText("Compartir estadísticas de anuncios (CSV)");
         shareStats.setOnClickListener(view -> shareAdStats());
         root.addView(shareStats);
+        addLevelingSection(root, pad);
         diagnostics = new TextView(this);
         diagnostics.setTextColor(Color.DKGRAY);
         diagnostics.setPadding(0, pad, 0, pad);
@@ -98,6 +112,88 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(root);
         setContentView(scroll);
+    }
+
+    private void addLevelingSection(LinearLayout root, int pad) {
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        TextView heading = new TextView(this);
+        heading.setText("Nivelar volumen de otras apps");
+        heading.setTextSize(20); heading.setTextColor(Color.BLACK); heading.setPadding(0, pad, 0, 0);
+        root.addView(heading);
+        TextView help = new TextView(this);
+        help.setText("Mantiene estable el volumen de las apps que elijas (por ejemplo iVoox) para que los anuncios no suenen más fuertes que el contenido. Solo afecta al audio de esas apps, no al volumen del móvil.");
+        root.addView(help);
+
+        Switch enable = new Switch(this);
+        enable.setText("Activar nivelador"); enable.setTextSize(17); enable.setPadding(0, 12, 0, 12);
+        enable.setChecked(prefs.getBoolean(VolumeLevelingService.KEY_ENABLED, false));
+        enable.setOnCheckedChangeListener((button, checked) -> {
+            prefs.edit().putBoolean(VolumeLevelingService.KEY_ENABLED, checked).apply();
+            if (checked) startLeveling();
+            else RuntimeStatus.leveling = "Nivelador de volumen desactivado";
+        });
+        root.addView(enable);
+
+        levelStrength = new Button(this);
+        updateStrengthLabel(prefs);
+        levelStrength.setOnClickListener(view -> {
+            int next = (prefs.getInt(VolumeLevelingService.KEY_STRENGTH, 1) + 1) % (LevelingProfile.MAX_STRENGTH + 1);
+            prefs.edit().putInt(VolumeLevelingService.KEY_STRENGTH, next).apply();
+            updateStrengthLabel(prefs);
+        });
+        root.addView(levelStrength);
+
+        Button apps = new Button(this);
+        apps.setText("Elegir aplicaciones");
+        apps.setOnClickListener(view -> chooseApps(prefs));
+        root.addView(apps);
+
+        levelStatus = new TextView(this);
+        levelStatus.setTextColor(Color.DKGRAY);
+        levelStatus.setPadding(0, pad / 2, 0, 0);
+        root.addView(levelStatus);
+
+        if (prefs.getBoolean(VolumeLevelingService.KEY_ENABLED, false)) startLeveling();
+    }
+
+    private void updateStrengthLabel(SharedPreferences prefs) {
+        int strength = prefs.getInt(VolumeLevelingService.KEY_STRENGTH, 1);
+        levelStrength.setText("Intensidad: " + LevelingProfile.NAMES[strength] + " (toca para cambiar)");
+    }
+
+    private void startLeveling() {
+        if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[] { android.Manifest.permission.POST_NOTIFICATIONS }, 1);
+        }
+        startForegroundService(new Intent(this, VolumeLevelingService.class));
+    }
+
+    private void chooseApps(SharedPreferences prefs) {
+        PackageManager pm = getPackageManager();
+        Intent launcher = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+        final List<String> packages = new ArrayList<>();
+        final List<String> labels = new ArrayList<>();
+        List<ResolveInfo> found = pm.queryIntentActivities(launcher, 0);
+        Collections.sort(found, new ResolveInfo.DisplayNameComparator(pm));
+        for (ResolveInfo info : found) {
+            String pkg = info.activityInfo.packageName;
+            if (pkg.equals(getPackageName()) || packages.contains(pkg)) continue;
+            packages.add(pkg);
+            labels.add(info.loadLabel(pm).toString());
+        }
+        final Set<String> chosen = new HashSet<>(prefs.getStringSet(VolumeLevelingService.KEY_APPS,
+            Collections.singleton(VolumeLevelingService.DEFAULT_APP)));
+        boolean[] checked = new boolean[packages.size()];
+        for (int i = 0; i < checked.length; i++) checked[i] = chosen.contains(packages.get(i));
+        new AlertDialog.Builder(this)
+            .setTitle("Apps a nivelar")
+            .setMultiChoiceItems(labels.toArray(new String[0]), checked, (dialog, which, on) -> {
+                if (on) chosen.add(packages.get(which)); else chosen.remove(packages.get(which));
+            })
+            .setPositiveButton("Guardar", (dialog, which) ->
+                prefs.edit().putStringSet(VolumeLevelingService.KEY_APPS, new HashSet<>(chosen)).apply())
+            .setNegativeButton("Cancelar", null)
+            .show();
     }
 
     private void shareAdStats() {

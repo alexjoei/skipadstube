@@ -8,5 +8,6 @@ final class RuntimeStatus {
     static volatile String audioError = "";
     static volatile String sound = "Sin probar";
     static volatile String stats = "Sin estadísticas de anuncios todavía";
+    static volatile String leveling = "Nivelador de volumen desactivado";
     private RuntimeStatus() {}
 }

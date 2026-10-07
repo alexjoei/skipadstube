@@ -1,11 +1,11 @@
-# skipadstube MVP 1.0.0 (Android)
+# skipadstube MVP 1.1.0 (Android)
 
 Aplicación local que observa exclusivamente la interfaz de la app oficial de YouTube,
 silencia el audio al detectar un anuncio y pulsa el botón de omitir cuando aparece.
 
 ## Estado
 
-- MVP 1.0.0, con el nombre e identificador skipadstube.
+- MVP 1.1.0, con el nombre e identificador skipadstube.
 - Sin permiso de Internet ni analítica. Desde la 0.2.9 guarda localmente, en `ad_stats.csv`
   (ver [Estadísticas de anuncios](#estadísticas-de-anuncios)), un registro de cada anuncio para poder
   analizarlo más adelante; ese archivo nunca sale del dispositivo.
@@ -118,3 +118,17 @@ Canonical repository: https://github.com/alexjoei/skipadstube
 - Open the root project in Android Studio with JDK 17 and Android SDK 35. The Gradle wrapper pins Gradle 8.9 for Android Gradle Plugin 8.7.3. Run `./gradlew :app:testDebugUnitTest :app:assembleDebug` (`.\gradlew.bat` on Windows) once the toolchain is configured. The APK is generated at `app/build/outputs/apk/debug/app-debug.apk`.
 - Android 0.2.7: regression coverage includes rejected volume writes and restoration retries. On Realme RMX3851 / Android 15, two ads reached media volume 0 and content recovered its saved volume; audible chimes remain unresolved.
 - Record improvements as GitHub issues and implement them in branches with pull requests. Never commit signing keys or local SDK paths.
+
+## Nivelar volumen de otras apps (iVoox)
+
+Desde la 1.1.0, la pantalla principal tiene "Nivelar volumen de otras apps": un compresor +
+limitador (`DynamicsProcessing`) que se engancha solo al audio de las apps que elijas, para que un
+anuncio no suene más fuerte que el podcast. No toca el volumen del móvil.
+
+1. Una sola vez, con el móvil por USB y depuración activa: `adb shell pm grant com.skipadstube.app android.permission.DUMP`
+   (sin él solo se nivelan apps que anuncien su sesión de audio; iVoox probablemente no).
+2. Activa "Activar nivelador", elige la app en "Elegir aplicaciones" (iVoox viene marcada) y la intensidad.
+3. Reproduce un podcast: el estado debe decir "1 sesión(es) de audio controladas".
+
+Pendiente de comprobar en un dispositivo real: que el efecto se enganche a iVoox en Android 15 /
+Realme UI y el formato real de `dumpsys audio` (el analizador es tolerante pero no confirmado).

@@ -2,6 +2,25 @@
 
 ## Unreleased  
 
+### Android 1.1.0 / Desktop 1.1.0 — 2026-10-07
+
+- New: **volume leveler** so loud ads (iVoox) stop jumping above the content. Android attaches a
+  `DynamicsProcessing` compressor + limiter to the audio sessions of the apps chosen from a list
+  (`VolumeLevelingService`, foreground service; default app `com.ivoox.app`), with Suave / Medio /
+  Fuerte strengths (`LevelingProfile`). It only changes those apps' audio, not the phone volume.
+- Sessions are discovered two ways: the standard `OPEN_AUDIO_EFFECT_CONTROL_SESSION` broadcast, and
+  `dumpsys audio` parsed by `AudioSessionParser`, which needs the DUMP permission granted once:
+  `adb shell pm grant com.skipadstube.app android.permission.DUMP` (the app shows this command when it is missing).
+- Desktop: `leveler.js` runs a Web Audio compressor + limiter on `<audio>/<video>` at ivoox.com, toggled
+  by "Nivelar volumen (iVoox)" in the popup. It deliberately skips cross-origin media without CORS,
+  because attaching to those would silence playback, so it may not engage on every iVoox player.
+- Verified: Android build and unit tests (new `AudioSessionParserTest`, `LevelingProfileTest`) and the 3 new
+  desktop tests pass. **Not verified on a real device or in a browser yet**: whether Realme UI /
+  Android 15 lets the effect attach to iVoox's session, the real `dumpsys audio` line format on that
+  phone (the parser is tolerant but unconfirmed), and the compressor values (tune by ear).
+- APK SHA-256: `ede4a71bc14b3b214982b5d35817ef0ed8838d1ee6a74a063b52a3cb609f268b`.
+- Desktop zip SHA-256: `dd0ffef001f31cdb22bc4a10d1b3160a79b22da199ccc6f398b7a85ede1075e6`.
+
 ### Android 1.0.0 / Desktop 1.0.0 — 2026-10-03
 
 - Add `content_ms_before_ad`: time spent watching since the previous ad ended (0 for the first

@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Not grantable from the UI: enabled once via `adb shell pm grant`, lets the leveler read the audio sessions of other apps. -->
+    <uses-permission android:name="android.permission.DUMP" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -21,6 +33,15 @@
             android:authorities="com.skipadstube.app.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true" />
+
+        <service
+            android:name=".VolumeLevelingService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Attach a local audio compressor to the audio sessions of apps the user chose" />
+        </service>
 
         <service
             android:name=".YouTubeAutomationService"
